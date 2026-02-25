@@ -10,7 +10,7 @@ from decimal import Decimal
 from datetime import datetime
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
-from .filters import TripLogFilter
+from .filters import TripLogFilter, VehicleFilter, DriverFilter
 # Create your views here.
 
 
@@ -49,6 +49,8 @@ class LoginView(APIView):
 class VehicleListCreateView(generics.ListCreateAPIView):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = VehicleFilter
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -69,6 +71,8 @@ class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
 class DriverListCreateView(generics.ListCreateAPIView):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DriverFilter
 
     def get_permissions(self):
         if self.request.method == "POST":
