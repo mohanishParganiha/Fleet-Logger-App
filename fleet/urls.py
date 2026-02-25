@@ -6,8 +6,10 @@ urlpatterns = [
     path('login/', views.LoginView.as_view(), name='login'),
 
     # truck endpoints
-    path('trucks/', views.TruckListCreateView.as_view(), name='truck-list-create'),
-    path('trucks/<int:pk>/', views.TruckDetailView.as_view(), name='truck-detail'),
+    path(
+        'vehicles/', views.VehicleListCreateView.as_view(), name='vehicle-list-create'),
+    path(
+        'vehicles/<int:pk>/', views.VehicleDetailView.as_view(), name='vehicle-detail'),
 
     # driver endpoints
     path(

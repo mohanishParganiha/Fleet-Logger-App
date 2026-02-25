@@ -7,8 +7,8 @@ STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 # Create your models here.
 
 
-class Truck(models.Model):
-    """Model for trucks."""
+class Vehicle(models.Model):
+    """Model for Vehicles."""
     model = models.CharField(max_length=25, blank=True)
     registered_number = models.CharField(
         max_length=10, blank=False, unique=True)
@@ -18,7 +18,7 @@ class Truck(models.Model):
     date_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Truck: {self.registered_number}"
+        return f"Vehicle: {self.registered_number}"
 
 
 class Driver(models.Model):
@@ -37,7 +37,7 @@ class Driver(models.Model):
 class TripLog(models.Model):
     """Models for logs."""
     date_time = models.DateTimeField(blank=False, unique=False)
-    truck = models.ForeignKey(Truck, on_delete=models.CASCADE)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     number_of_trips = models.IntegerField(blank=False)
     weight = models.DecimalField(
@@ -50,4 +50,4 @@ class TripLog(models.Model):
         max_digits=6, decimal_places=2, blank=True, null=True)
 
     def __str__(self):
-        return f"Trip on {self.date_time} - {self.truck.registered_number}"
+        return f"Trip on {self.date_time} - {self.vehicle.registered_number}"

@@ -4,12 +4,13 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Sum, F
-from .models import Truck, Driver, TripLog
-from .serializers import TruckSerializer, DriverSerializer, TripLogSerializer
+from .models import Vehicle, Driver, TripLog
+from .serializers import VehicleSerializer, DriverSerializer, TripLogSerializer
 from decimal import Decimal
 from datetime import datetime
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser, IsAuthenticated
-
+from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
+from .filters import TripLogFilter
 # Create your views here.
 
 
@@ -45,9 +46,9 @@ class LoginView(APIView):
             )
 
 
-class TruckListCreateView(generics.ListCreateAPIView):
-    queryset = Truck.objects.all()
-    serializer_class = TruckSerializer
+class VehicleListCreateView(generics.ListCreateAPIView):
+    queryset = Vehicle.objects.all()
+    serializer_class = VehicleSerializer
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -55,9 +56,9 @@ class TruckListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticatedOrReadOnly()]
 
 
-class TruckDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Truck.objects.all()
-    serializer_class = TruckSerializer
+class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Vehicle.objects.all()
+    serializer_class = VehicleSerializer
 
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:
@@ -89,6 +90,8 @@ class TripLogListCreateView(generics.ListCreateAPIView):
     queryset = TripLog.objects.all()
     serializer_class = TripLogSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TripLogFilter
 
 
 class TripLogDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -179,7 +182,7 @@ class TripLogBulkCalculateView(APIView):
         end_date = request.data.get('end_date')
         rate = request.data.get('rate')
         calc_type = request.data.get('calc_type')
-        truck_number = request.data.get('truck')
+        vehicle_number = request.data.get('vehicle')
 
         if not all([start_date, end_date, rate, calc_type]):
             return Response(
@@ -211,14 +214,14 @@ class TripLogBulkCalculateView(APIView):
             date_time__date__lte=end_date
         )
 
-        # filter by truck if available , we can chain filters
-        if truck_number:
+        # filter by Vehicle if available , we can chain filters
+        if vehicle_number:
             try:
-                truck = Truck.objects.get(registered_number=truck_number)
-                trips = trips.filter(truck=truck)
-            except Truck.DoesNotExist:
+                vehicle = Vehicle.objects.get(registered_number=vehicle_number)
+                trips = trips.filter(vehicle=vehicle)
+            except Vehicle.DoesNotExist:
                 return Response(
-                    {"error": f"Truck '{truck_number}' not found"},
+                    {"error": f"Vehicle '{vehicle_number}' not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
@@ -239,7 +242,7 @@ class TripLogBulkCalculateView(APIView):
             {
                 "start_date": start_date,
                 "end_date": end_date,
-                "truck": truck_number,
+                "vehicle": vehicle_number,
                 "total_trips": trips.count(),
                 "calc_type": calc_type,
                 field_name: float(total),

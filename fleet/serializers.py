@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from .models import Truck, Driver, TripLog
+from .models import Vehicle, Driver, TripLog
 
 
-# simple truck serializer
-class TruckSerializer(serializers.ModelSerializer):
+# simple Vehicle serializer
+class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Truck
+        model = Vehicle
         fields = '__all__'
 
 
@@ -16,8 +16,8 @@ class DriverSerializer(serializers.ModelSerializer):
 
 
 class TripLogSerializer(serializers.ModelSerializer):
-    truck = serializers.SlugRelatedField(
-        queryset=Truck.objects.all(),
+    vehicle = serializers.SlugRelatedField(
+        queryset=Vehicle.objects.all(),
         slug_field='registered_number'
     )
 
