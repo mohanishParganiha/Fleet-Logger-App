@@ -17,6 +17,9 @@ class Vehicle(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-status', 'registered_number', '-date_created']
+
     def __str__(self):
         return f"Vehicle: {self.registered_number}"
 
@@ -29,6 +32,9 @@ class Driver(models.Model):
         max_length=10, default='active', choices=STATUS_CHOICES)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-status', 'name', '-date_created']
 
     def __str__(self):
         return f"Driver: {self.name} ({self.license_number})"
@@ -48,6 +54,9 @@ class TripLog(models.Model):
     drop_off = models.CharField(max_length=100, blank=True, null=True)
     diesel_fill = models.DecimalField(
         max_digits=6, decimal_places=2, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-date_time']
 
     def __str__(self):
         return f"Trip on {self.date_time} - {self.vehicle.registered_number}"

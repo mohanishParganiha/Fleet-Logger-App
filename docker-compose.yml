@@ -1,0 +1,35 @@
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=fleet_db
+      - POSTGRES_USER=fleet_user
+      - POSTGRES_PASSWORD=fleet_password
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DB_NAME=fleet_db
+      - DB_USER=fleet_user
+      - DB_PASSWORD=fleet_password
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:

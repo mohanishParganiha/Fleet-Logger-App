@@ -138,12 +138,19 @@ class TripLogCalculationView(APIView):
             )
 
         # convert rate to decime for better accuracy
-        rate = Decimal(rate)
+        # use try to check for invalid rates inputs such as Decimal('abc') will give type error
+        try:
+            rate = Decimal(rate)
+        except ValueError:
+            return Response(
+                {"error": "enter valid rate. rate must be greater than 0.00 and interger or float"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # finally calculation  for weight
         if calc_type == 'weight':
             # check if weight exist cause its nullable
-            if not trip.weight:
+            if trip.weight is None:
                 return Response(
                     {"error": "This trip has no weight data"},
                     status=status.HTTP_400_BAD_REQUEST
@@ -153,7 +160,7 @@ class TripLogCalculationView(APIView):
         # finally calculation for distance
         else:
             # check if distance exist  cause its nullable
-            if not trip.distance_traveled:
+            if trip.distance_traveled is None:
                 return Response(
                     {"error": "This trip has no distance  data"},
                     status=status.HTTP_400_BAD_REQUEST
