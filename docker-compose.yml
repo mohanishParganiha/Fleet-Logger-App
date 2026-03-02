@@ -5,9 +5,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=fleet_db
-      - POSTGRES_USER=fleet_user
-      - POSTGRES_PASSWORD=fleet_password
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
       - "5432:5432"
 
@@ -19,13 +19,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=True
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - DB_NAME=fleet_db
-      - DB_USER=fleet_user
-      - DB_PASSWORD=fleet_password
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
     depends_on:
       - db
     stdin_open: true
