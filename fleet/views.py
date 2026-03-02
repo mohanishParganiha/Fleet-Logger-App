@@ -143,7 +143,13 @@ class TripLogCalculationView(APIView):
             rate = Decimal(rate)
         except ValueError:
             return Response(
-                {"error": "enter valid rate. rate must be greater than 0.00 and interger or float"},
+                {"error": "enter valid rate.  interger or decimal"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if rate < 1:
+            return Response(
+                {"error": "rate must be greater than 0"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -208,7 +214,20 @@ class TripLogBulkCalculateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        rate = Decimal(rate)
+        # validate rate is a number
+        try:
+            rate = Decimal(rate)
+        except ValueError:
+            return Response(
+                {"error": "rate must be greater than equal to 0.00 and must be integer or decimal"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if rate < 1:
+            return Response(
+                {"error": "rate must be greater than 0"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             start_date = datetime.fromisoformat(start_date).date()
@@ -216,6 +235,12 @@ class TripLogBulkCalculateView(APIView):
         except ValueError:
             return Response(
                 {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if start_date > end_date:
+            return Response(
+                {"error": "start date cannot be greater than end date"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

@@ -15,6 +15,13 @@ class DriverSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+def validate_negative_values(value):
+    if value < 0:
+        raise serializers.ValidationError(
+            'value must be greater than equal to 0')
+    return value
+
+
 class TripLogSerializer(serializers.ModelSerializer):
     vehicle = serializers.SlugRelatedField(
         queryset=Vehicle.objects.all(),
@@ -26,26 +33,17 @@ class TripLogSerializer(serializers.ModelSerializer):
         slug_field='license_number'
     )
 
-    def validate_number_of_trips(self, value):
-        """check if number of trips should be greater than equal to 0"""
-        if value < 0:
-            raise serializers.ValidationError(
-                'number of trips must be greater than equal to 0')
-        return value
+    number_of_trips = serializers.IntegerField(
+        validators=[validate_negative_values])
 
-    def validate_weight(self, value):
-        """check if number of trips should be greate than equal to 0"""
-        if value < 0:
-            raise serializers.ValidationError(
-                'weight must be greater than equal to 0')
-        return value
+    weight = serializers.DecimalField(
+        max_digits=10, decimal_places=2, validators=[validate_negative_values], required=False)
 
-    def validate_distance_traveled(self, value):
-        """check if number of trips should be greate than equal to 0"""
-        if value < 0:
-            raise serializers.ValidationError(
-                'distance traveled must be greater than equal to 0')
-        return value
+    distance_traveled = serializers.DecimalField(
+        max_digits=5, decimal_places=2, validators=[validate_negative_values], required=False)
+
+    diesel_fill = serializers.DecimalField(
+        max_digits=6, decimal_places=2, validators=[validate_negative_values], required=False)
 
     class Meta:
         model = TripLog
