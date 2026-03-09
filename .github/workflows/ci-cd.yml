@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branch: [ main ]
+    branches: [ main ]
   pull_request:
-    branch: [ main ]
+    branches: [ main ]
 
 env:
   DOCKER_IMAGE: fleet-logger-api
@@ -37,13 +37,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+      
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{runner.os}}-pip-${{hashFiles('**/requirements.txt')}}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{runner.os}}-pip-
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -100,9 +101,9 @@ jobs:
 
   deploy:
     name: Deploy to EC2
-    need: test
+    needs: test
     runs-on: ubuntu-latest
-    if: github.ref=='refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -116,11 +117,11 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} << "ENDSSH"
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} << 'ENDSSH'
             cd Fleet-Logger-App
             git pull origin main
-            docker compose down
-            docker compose up --build -d
-            docker compose exec -T web python manage.py migrate
-            docker compose exec -T web python manage.py collectstatic --noinput
+            docker-compose down
+            docker-compose up --build -d
+            docker-compose exec -T web python manage.py migrate
+            docker-compose exec -T web python manage.py collectstatic --noinput
           ENDSSH
