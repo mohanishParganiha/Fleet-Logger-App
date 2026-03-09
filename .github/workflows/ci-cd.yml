@@ -109,19 +109,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy to EC2
-        env:
-          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ubuntu
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy via Systems Manager
         run: |
-          echo "$PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} << 'ENDSSH'
-            cd Fleet-Logger-App
-            git pull origin main
-            docker-compose down
-            docker-compose up --build -d
-            docker-compose exec -T web python manage.py migrate
-            docker-compose exec -T web python manage.py collectstatic --noinput
-          ENDSSH
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "cd /home/ubuntu/Fleet-Logger-App",
+              "git pull origin main",
+              "docker-compose down",
+              "docker-compose up --build -d",
+              "docker-compose exec -T web python manage.py migrate",
+              "docker-compose exec -T web python manage.py collectstatic --noinput"
+            ]' \
+            --output text
