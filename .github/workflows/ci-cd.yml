@@ -1,0 +1,126 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branch: [ main ]
+  pull_request:
+    branch: [ main ]
+
+env:
+  DOCKER_IMAGE: fleet-logger-api
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{runner.os}}-pip-${{hashFiles('**/requirements.txt')}}
+          restore-keys: |
+            ${{runner.os}}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        env:
+          DB_NAME: test_db
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: 5432
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: False
+          ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          python manage.py migrate
+
+      - name: Run tests
+        env:
+          DB_NAME: test_db
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: 5432
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: False
+          ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          python manage.py test
+
+      - name: Run coverage
+        env:
+          DB_NAME: test_db
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: 5432
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: False
+          ALLOWED_HOSTS: localhost,127.0.0.1
+        run: |
+          pip install coverage
+          coverage run --source='.' manage.py test
+          coverage report
+          coverage html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+  deploy:
+    name: Deploy to EC2
+    need: test
+    runs-on: ubuntu-latest
+    if: github.ref=='refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ubuntu
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} << "ENDSSH"
+            cd Fleet-Logger-App
+            git pull origin main
+            docker compose down
+            docker compose up --build -d
+            docker compose exec -T web python manage.py migrate
+            docker compose exec -T web python manage.py collectstatic --noinput
+          ENDSSH
