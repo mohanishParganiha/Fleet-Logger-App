@@ -9,7 +9,7 @@ const AUTH = {
   is_staff: false,
 };
 
-let API_BASE = 'http://localhost'
+let API_BASE = 'http://3.110.86.158'
 
 // ── DEBOUNCE ───────────────────────────────────
 const _debounceTimers = {};
