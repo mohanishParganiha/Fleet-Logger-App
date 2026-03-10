@@ -25,10 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-if not DEBUG and not os.environ.get('SECRET_KEY'):
-    raise ValueError("SECRET_KEY must be set in .env file for production!")
-elif DEBUG and not os.environ.get('SECRET_KEY'):
-    raise ValueError("SECRET_KEY must be set in .env file!")
+if not os.environ.get('SECRET_KEY'):
+    raise ValueError("SECRET_KEY must be set in .env file !")
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
