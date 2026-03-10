@@ -118,7 +118,7 @@ jobs:
 
       - name: Deploy via Systems Manager
         run: |
-          aws ssm send-command \
+          COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
@@ -129,4 +129,14 @@ jobs:
               "docker-compose exec -T web python manage.py migrate",
               "docker-compose exec -T web python manage.py collectstatic --noinput"
             ]' \
-            --output text
+            --output text \
+            --query "Command.CommandId")
+
+          echo "Command ID: $COMMAND_ID"
+          echo "Waiting for command to complete..."
+
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }}
+
+          echo "Deployment completed!"
