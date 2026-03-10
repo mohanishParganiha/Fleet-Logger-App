@@ -24,10 +24,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-if not os.environ.get('SECRET_KEY'):
-    raise ValueError("SECRET_KEY must be set in .env file !")
-
 SECRET_KEY = os.environ.get('SECRET_KEY')
+
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ValueError("SECRET_KEY must be set in production!")
+    else:
+        # Allow tests/dev to run without SECRET_KEY in .env
+        SECRET_KEY = 'p)lc1=1&8cq%9vz-sa4#*^57iq2s(m%)xwmsyq1v077c#+b=2^'
 
 ALLOWED_HOSTS = os.environ.get(
     'ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')

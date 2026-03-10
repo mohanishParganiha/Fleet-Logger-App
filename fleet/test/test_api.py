@@ -4,7 +4,6 @@ from django.contrib.auth.models import User
 from fleet.models import *
 from decimal import Decimal
 from django.utils import timezone
-import json
 
 
 class VehicleAPITest(APITestCase):
