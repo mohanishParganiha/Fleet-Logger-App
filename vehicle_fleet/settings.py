@@ -149,20 +149,20 @@ if not DEBUG:
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── CORS ──────────────────────────────────────
-# SIMPLIFIED - Allow all origins for now
-# TODO: Restrict this later for production
-CORS_ALLOW_ALL_ORIGINS = True
+# Production: Use specific allowed origins
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:8080,http://127.0.0.1:8080'
+).split(',')
 
-# Commented out - will add back later
-# CORS_ALLOWED_ORIGINS = os.environ.get(
-#     'CORS_ALLOWED_ORIGINS',
-#     'http://localhost,http://127.0.0.1'
-# ).split(',')
-#
-# CSRF_TRUSTED_ORIGINS = os.environ.get(
-#     'CSRF_TRUSTED_ORIGINS',
-#     'http://localhost,http://127.0.0.1'
-# ).split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'None'
+).split(',')
+
+# Development fallback (comment this out for production)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 
 REST_FRAMEWORK = {
