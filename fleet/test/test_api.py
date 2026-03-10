@@ -89,7 +89,7 @@ class VehicleAPITest(APITestCase):
         }
         self.client.force_authenticate(user=self.admin_user)
         self.client.post("/api/vehicles/", payload)
-        response = self.client.get("/api/vehicle/")
+        response = self.client.get("/api/vehicles/")
 
     def test_update_vehicle_as_admin(self):
         """admin can update vehicle"""
