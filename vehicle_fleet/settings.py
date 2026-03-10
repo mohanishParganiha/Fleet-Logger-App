@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-TESTING = 'test' in sys.argv or 'pytest' in sys.argv
+# TESTING = 'test' in sys.argv or 'pytest' in sys.argv
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
@@ -149,18 +149,21 @@ if not DEBUG:
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── CORS ──────────────────────────────────────
-# In development, allow the frontend to talk to this server.
-# In production, replace with your actual frontend domain.
+# SIMPLIFIED - Allow all origins for now
+# TODO: Restrict this later for production
+CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost,http://127.0.0.1'
-).split(',')
+# Commented out - will add back later
+# CORS_ALLOWED_ORIGINS = os.environ.get(
+#     'CORS_ALLOWED_ORIGINS',
+#     'http://localhost,http://127.0.0.1'
+# ).split(',')
+#
+# CSRF_TRUSTED_ORIGINS = os.environ.get(
+#     'CSRF_TRUSTED_ORIGINS',
+#     'http://localhost,http://127.0.0.1'
+# ).split(',')
 
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    'CSRF_TRUSTED_ORIGINS',
-    'http://localhost,http://127.0.0.1'
-).split(',')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -187,12 +190,13 @@ REST_FRAMEWORK = {
     },
 
 }
-if not DEBUG and not TESTING:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+
+# if not DEBUG and not TESTING:
+#     SECURE_SSL_REDIRECT = True
+#     SESSION_COOKIE_SECURE = True
+#     CSRF_COOKIE_SECURE = True
+#     SECURE_BROWSER_XSS_FILTER = True
+#     SECURE_CONTENT_TYPE_NOSNIFF = True
+#     SECURE_HSTS_SECONDS = 31536000
+#     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#     SECURE_HSTS_PRELOAD = True
