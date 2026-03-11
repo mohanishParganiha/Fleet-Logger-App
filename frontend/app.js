@@ -9,7 +9,7 @@ const AUTH = {
   is_staff: false,
 };
 
-let API_BASE = 'http://localhost'
+let API_BASE = ""
 
 // ── DEBOUNCE ───────────────────────────────────
 const _debounceTimers = {};
@@ -143,7 +143,7 @@ async function doLogin() {
   btn.disabled    = true;
 
   try {
-    const res = await fetch(`${API_BASE}/api/login/`, {
+    const res = await fetch(`/api/login/`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username, password }),
