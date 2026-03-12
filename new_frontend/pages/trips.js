@@ -37,8 +37,8 @@ html+=`
 
 <tr>
 <td>${t.date_time}</td>
-<td>${t.vehicle_number}</td>
-<td>${t.driver_name}</td>
+<td>${t.vehicle}</td>
+<td>${t.driver}</td>
 <td>${t.number_of_trips}</td>
 <td>${quantity}</td>
 <td>${t.diesel_fill||""}</td>
