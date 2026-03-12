@@ -1,0 +1,63 @@
+body{
+font-family:Arial, sans-serif;
+margin:0;
+background:#f4f6f8;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#222;
+color:white;
+padding:10px 20px;
+}
+
+.nav button{
+margin-right:10px;
+padding:6px 10px;
+cursor:pointer;
+}
+
+.hidden{
+display:none;
+}
+
+main{
+padding:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:8px;
+text-align:left;
+}
+
+th{
+background:#eee;
+}
+
+.login{
+width:300px;
+margin:120px auto;
+background:white;
+padding:20px;
+border-radius:6px;
+box-shadow:0 0 8px rgba(0,0,0,0.1);
+}
+
+input{
+width:100%;
+margin-bottom:10px;
+padding:8px;
+}
+
+button{
+cursor:pointer;
+}
