@@ -34,7 +34,7 @@ class TripLogSerializer(serializers.ModelSerializer):
         slug_field='license_number'
     )
     driver_id = serializers.IntegerField(source='driver.id', read_only=True)
-
+    driver_name = serializers.CharField(source='driver.name', read_only=True)
     number_of_trips = serializers.IntegerField(
         validators=[validate_negative_values])
 
