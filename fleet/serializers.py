@@ -27,11 +27,13 @@ class TripLogSerializer(serializers.ModelSerializer):
         queryset=Vehicle.objects.all(),
         slug_field='registered_number'
     )
+    vehicle_id = serializers.IntegerField(source=vehicle.id, read_only=True)
 
     driver = serializers.SlugRelatedField(
         queryset=Driver.objects.all(),
         slug_field='license_number'
     )
+    driver_id = serializers.IntegerField(source=driver.id, read_only=True)
 
     number_of_trips = serializers.IntegerField(
         validators=[validate_negative_values])
