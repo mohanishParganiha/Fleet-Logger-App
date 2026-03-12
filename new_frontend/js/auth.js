@@ -1,9 +1,9 @@
 import {apiRequest} from "./api.js";
 
-export async function login(email,password){
+export async function login(username,password){
 
 const {data,response}=await apiRequest("/api/login/","POST",{
-email,
+username,
 password
 });
 

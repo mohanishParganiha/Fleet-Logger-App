@@ -32,7 +32,7 @@ e.preventDefault();
 
 const form=new FormData(e.target);
 
-const ok=await login(form.get("email"),form.get("password"));
+const ok=await login(form.get("username"),form.get("password"));
 
 if(ok){
 startApp();
