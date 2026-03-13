@@ -1,4 +1,5 @@
 from django.db import models
+from users.models import User
 
 STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 
@@ -24,7 +25,15 @@ class Vehicle(models.Model):
 
 class Driver(models.Model):
     """Model for Drives."""
-    name = models.CharField(max_length=100, blank=False)
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE,
+        related_name='driver_profile',
+        blank=True,
+        null=True,
+        help_text='link to user account if driver needs login access'
+    )
+    name = models.CharField(max_length=100, null=False,
+                            blank=False, unique=False)
     license_number = models.CharField(max_length=15, blank=False, unique=True)
     status = models.CharField(
         max_length=10, default='active', choices=STATUS_CHOICES)

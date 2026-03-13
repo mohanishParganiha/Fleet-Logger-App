@@ -19,16 +19,16 @@ class LoginView(APIView):
     permission_classes = []  # allows any one to login
 
     def post(self, request):
-        username = request.data.get('username')
+        email = request.data.get('email')
         password = request.data.get('password')
 
-        if not username or not password:
+        if not email or not password:
             return Response(
                 {"error": "username or password cannot be empty"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(email=email, password=password)
 
         if user:
             token, created = Token.objects.get_or_create(user=user)
@@ -36,7 +36,7 @@ class LoginView(APIView):
                 {
                     "token": token.key,
                     "user_id": user.id,  # type:ignore
-                    "username": user.username,
+                    "email": user.email,
                     "is_staff": user.is_staff}
             )
         else:
