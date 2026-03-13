@@ -107,7 +107,7 @@ class TripLogAPITest(APITestCase):
     def setUp(self):
         """Setup test data"""
         self.user = User.objects.create_user(
-            username='testuser',
+            email='testuser',
             password='test123'
         )
 
