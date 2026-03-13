@@ -53,8 +53,8 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework.authtoken',
     'corsheaders',
-    'fleet',
     'users',
+    'fleet',
 
 ]
 
