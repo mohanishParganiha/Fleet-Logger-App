@@ -134,6 +134,6 @@ jobs:
             # 3 Run migrations (separate command to monitor for RAM spikes)
             docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate --noinput
             # 4 Collect static files
-            docker compose -f docker-compose-deploy.yml exec -T web python mange.py collectstatic --noinput
+            docker compose -f docker-compose-deploy.yml exec -T web python manage.py collectstatic --noinput
             # 5 free up space by removing the old images
             docker image prune -f
