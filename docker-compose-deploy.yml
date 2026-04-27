@@ -1,30 +1,37 @@
-
 services:
 
   web:
     build: .
-    command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py
+    image: vehicle_fleet_web:latest
+    command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py --workers 2 --threads 2 --worker-tmp-dir /dev/shm
+    restart: always
     volumes:
-      - .:/app
       - static_volume:/app/staticfiles
-    ports:
-      - 8000
+    expose:
+      - "8000"
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
     networks:
       - fleet_network
+    deploy:
+      resources:
+        limits:
+          memory: 600M
+        reservations:
+          memory: 400M
 
   nginx:
     image: nginx:alpine
+    restart: always
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_volume:/app/staticfiles:ro
@@ -34,9 +41,12 @@ services:
       - web
     networks:
       - fleet_network
+    deploy:
+      resources:
+        limits:
+          memory: 100M
 
 volumes:
-  postgres_data:
   static_volume:
 
 networks:
