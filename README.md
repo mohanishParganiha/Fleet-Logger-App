@@ -25,6 +25,23 @@ Secure API: Token-based authentication for mobile and web frontends.
 
 Cloud Scalability: Decoupled architecture allowing the Django server and PostgreSQL database to scale independently.  
 
+## Project Structure  
+
+```text
+.
+├── fleet/               # Main API Application (Django)
+├── users/               # User Authentication & Profiles
+├── vehicle_fleet/       # Project Configuration & Settings
+├── new_frontend/        # Vibe-coded JS Dashboard (Vercel Hosted)
+├── nginx/               # Nginx Reverse Proxy Configs
+├── docker-compose.yml   # Orchestration for Backend & DB
+├── Dockerfile           # Backend Containerization
+├── gunicorn_config.py   # Gunicorn config file
+└── requirements.txt     # Python Dependencies
+
+[!NOTE]
+The new_frontend is a decoupled JavaScript application. While the backend runs on Docker/AWS, the frontend is optimized for CI/CD deployment via Vercel.
+```
 🚦 Getting Started (Local Development)  
 Prerequisites  
 Docker & Docker Compose  
@@ -54,7 +71,7 @@ CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://localhost
 ```
 Run with Docker Compose:
-```
+```bash
 docker-compose up --build
 ```
 🚢 Deployment  
