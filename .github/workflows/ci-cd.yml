@@ -127,9 +127,13 @@ jobs:
             cd ~/app
             # 1 load image to docker
             docker load < web_image.tar
-            # 2 use --remove-orphans to keep the 1gb ram server clean
+            # 2 stop the running containers
+            docker compose -f docker-compose-deploy.yml stop web
+            # 3 use --remove-orphans to keep the 1gb ram server clean
             docker compose -f docker-compose-deploy.yml up -d --remove-orphans
             # 3 Run migrations (separate command to monitor for RAM spikes)
             docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate --noinput
-            # 4 free up space by removing the old images
+            # 4 Collect static files
+            docker compose -f docker-compose-deploy.yml exec -T web python mange.py collectstatic --noinput
+            # 5 free up space by removing the old images
             docker image prune -f
