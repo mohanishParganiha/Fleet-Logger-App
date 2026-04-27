@@ -97,8 +97,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'fleet_db'),
         'USER': os.environ.get('DB_USER', 'fleet_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'fleet_password'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'fleet@pass123'),
+        'HOST': os.environ.get('DB_HOST', '10.0.0.89'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
