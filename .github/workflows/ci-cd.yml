@@ -3,9 +3,12 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ "main", "feature/**" ]
+    paths-ignore:
+      - 'new_frontend/**'
   pull_request:
     branches: [ main ]
-
+    paths-ignore:
+      - 'new_frontend/**'
 env:
   DOCKER_IMAGE: fleet-logger-api
   DB_NAME: test_db

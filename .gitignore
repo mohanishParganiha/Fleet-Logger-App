@@ -212,3 +212,6 @@ aws_key/
 
 #docker compose override file for local dev only
 docker-compose.yml
+
+#ignore frontend md file
+new_frontend/Fleet-Logger-App-Frontend-Technical-Map.md
