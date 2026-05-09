@@ -9,6 +9,11 @@ services:
       - static_volume:/app/staticfiles
     expose:
       - "8000"
+    dns:
+      - 169.254.169.254
+    dns_search:
+      - ${DNS1}
+      - ${DNS2}
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -28,6 +33,7 @@ services:
           memory: 600M
         reservations:
           memory: 400M
+
 
   nginx:
     image: nginx:alpine
