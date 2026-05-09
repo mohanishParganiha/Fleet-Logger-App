@@ -132,7 +132,7 @@ jobs:
             docker load < web_image.tar
 
             # 2. DELETE the tar file immediately to free up disk space
-            rm  web_image.tar
+            #rm  web_image.tar
 
             # 3 stop the running containers
             docker compose -f docker-compose-deploy.yml stop web
