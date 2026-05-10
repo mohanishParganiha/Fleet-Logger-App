@@ -110,37 +110,27 @@ jobs:
         run: |
           # We use a heredoc to build the script.
           # Note: $(cat ...) runs on the GitHub Runner to inject file content.
-          REMOTE_SCRIPT=$(cat <<EOF
-          mkdir -p ~/app/nginx
-
+          REMOTE_SCRIPT=$(cat <<'EOF'
+          d=~/app; mkdir -p ~/app/nginx
           cat <<EOT > ~/app/nginx/nginx.conf
           $(cat nginx/nginx.conf)
           EOT
-
           cat <<EOT > ~/app/docker-compose-deploy.yml
           $(cat docker-compose-deploy.yml)
           EOT
-
           cat <<EOT > ~/app/gunicorn_config.py
           $(cat gunicorn_config.py)
           EOT
-
           cd ~/app
-
           echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
-
           # Force pull the latest manifest from OCIR
           docker compose -f docker-compose-deploy.yml pull
-
           # take down running containers
           docker compose -f docker-compose-deploy.yml down
-
           # Re-deploy
           docker compose -f docker-compose-deploy.yml up -d --remove-orphans
-
           # run migration
           docker compose -f docker-compose-deploy.yml exec web python manage.py migrate
-
           # Clean up dangling images to save space on OCI boot volume
           docker image prune -f
           EOF
