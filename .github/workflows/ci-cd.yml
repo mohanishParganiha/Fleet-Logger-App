@@ -98,12 +98,11 @@ jobs:
 
       - name: Login to OCIR
         run: |
-          # Removed the trailing space after the backslash which often causes line-break errors
-          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
+          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
 
       - name: Build and push image
         run: |
-          IMAGE_PATH="${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/my-app-repo:latest"
+          IMAGE_PATH="ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com/${{ secrets.OCI_TENANCY_NAMESPACE }}/my-app-repo:latest"
           docker build -t $IMAGE_PATH .
           docker push $IMAGE_PATH
 
@@ -128,7 +127,7 @@ jobs:
 
           cd ~/app
 
-          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
+          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
 
           # Force pull the latest manifest from OCIR
           docker compose -f docker-compose-deploy.yml pull
