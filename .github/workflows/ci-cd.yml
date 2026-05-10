@@ -112,7 +112,7 @@ jobs:
           # Note: $(cat ...) runs on the GitHub Runner to inject file content.
           REMOTE_SCRIPT=$(cat <<'EOF'
           APP_DIR="/home/ubuntu/app"
-          mkdir -p ~/app/nginx
+          sudo mkdir -p ~/app/nginx
           sudo tee \$APP_DIR/nginx/nginx.conf <<EOT > /dev/null
           $(cat nginx/nginx.conf)
           EOT
