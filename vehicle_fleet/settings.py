@@ -97,8 +97,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'fleet_db'),
         'USER': os.environ.get('DB_USER', 'fleet_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'fleet@pass123'),
-        'HOST': os.environ.get('DB_HOST', '10.0.0.89'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'fleetpass123'),
+        'HOST': os.environ.get('DB_HOST', '10.0.0.236'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
@@ -193,12 +193,13 @@ REST_FRAMEWORK = {
 
 }
 
-# if not DEBUG and not TESTING:
-#     SECURE_SSL_REDIRECT = True
-#     SESSION_COOKIE_SECURE = True
-#     CSRF_COOKIE_SECURE = True
-#     SECURE_BROWSER_XSS_FILTER = True
-#     SECURE_CONTENT_TYPE_NOSNIFF = True
-#     SECURE_HSTS_SECONDS = 31536000
-#     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-#     SECURE_HSTS_PRELOAD = True
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # SECURE_SSL_REDIRECT = True
+    # SECURE_BROWSER_XSS_FILTER = True
+    # SECURE_CONTENT_TYPE_NOSNIFF = True
+    # SECURE_HSTS_SECONDS = 31536000
+    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # SECURE_HSTS_PRELOAD = True
