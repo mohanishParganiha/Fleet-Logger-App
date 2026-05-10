@@ -99,8 +99,7 @@ jobs:
       - name: Login to OCIR
         run: |
           # Removed the trailing space after the backslash which often causes line-break errors
-          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io \
-          -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
+          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
 
       - name: Build and push image
         run: |
