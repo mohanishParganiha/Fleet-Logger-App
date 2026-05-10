@@ -111,17 +111,19 @@ jobs:
           # We use a heredoc to build the script.
           # Note: $(cat ...) runs on the GitHub Runner to inject file content.
           REMOTE_SCRIPT=$(cat <<'EOF'
+          APP_DIR="/home/ubuntu/app"
           mkdir -p ~/app/nginx
-          cat <<EOT > ~/app/nginx/nginx.conf
+          sudo tee \$APP_DIR/nginx/nginx.conf <<EOT > /dev/null
           $(cat nginx/nginx.conf)
           EOT
-          cat <<EOT > ~/app/docker-compose-deploy.yml
+          sudo tee \$APP_DIR/docker-compose-deploy.yml <<EOT > /dev/null
           $(cat docker-compose-deploy.yml)
           EOT
-          cat <<EOT > ~/app/gunicorn_config.py
+          sudo tee \$APP_DIR/gunicorn_config.py <<EOT > /dev/null
           $(cat gunicorn_config.py)
           EOT
-          cd ~/app
+          sudo chown -R ubuntu:ubuntu \$APP_DIR
+          cd \$APP_DIR
           export IMAGE_PATH="ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com/${{ secrets.OCI_TENANCY_NAMESPACE }}/my-app-repo:latest"
           echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
           # Force pull the latest manifest from OCIR
