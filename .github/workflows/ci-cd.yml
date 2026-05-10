@@ -114,7 +114,7 @@ jobs:
           mkdir -p ~/app/nginx
 
           cat <<EOT > ~/app/nginx/nginx.conf
-          $(cat /nginx/nginx.conf)
+          $(cat nginx/nginx.conf)
           EOT
 
           cat <<EOT > ~/app/docker-compose-deploy.yml
@@ -141,7 +141,7 @@ jobs:
           )
 
           # Trigger the OCI Run Command
-          /home/runner/bin/oci compute-instance-agent command create \
+          /home/runner/bin/oci compute instance-agent command create \
             --instance-id ${{ secrets.OCI_APP_INSTANCE_OCID }} \
             --display-name "Deploy-${{ github.run_number }}" \
             --content "{\"source\": {\"sourceType\": \"TEXT\", \"text\": \"$REMOTE_SCRIPT\"}}" \
