@@ -113,13 +113,13 @@ jobs:
           REMOTE_SCRIPT=$(cat <<'EOF'
           APP_DIR="/home/ubuntu/app"
           sudo mkdir -p ~/app/nginx
-          sudo tee \$APP_DIR/nginx/nginx.conf <<EOT > /dev/null
+          sudo tee \$APP_DIR/nginx/nginx.conf <<'EOT' > /dev/null
           $(cat nginx/nginx.conf)
           EOT
-          sudo tee \$APP_DIR/docker-compose-deploy.yml <<EOT > /dev/null
+          sudo tee \$APP_DIR/docker-compose-deploy.yml <<'EOT' > /dev/null
           $(cat docker-compose-deploy.yml)
           EOT
-          sudo tee \$APP_DIR/gunicorn_config.py <<EOT > /dev/null
+          sudo tee \$APP_DIR/gunicorn_config.py <<'EOT' > /dev/null
           $(cat gunicorn_config.py)
           EOT
           sudo chown -R ubuntu:ubuntu \$APP_DIR
