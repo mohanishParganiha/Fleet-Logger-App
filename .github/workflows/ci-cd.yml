@@ -162,7 +162,7 @@ jobs:
 
           # Trigger the OCI Run Command
           /home/runner/bin/oci instance-agent command create \
-            --compartment-id ${{ secrets.OCI_TENANCY_OCID }} \
+            --compartment-id "ocid1.tenancy.oc1..aaaaaaaa5me4evkcdwhhd272twxs5idercxdx2uneuxtyzqaddq5rio2tyqq" \
             --display-name "Deploy-${{ github.run_number }}" \
             --content "$PAYLOAD" \
             --target "{\"instanceId\": \"${{ secrets.OCI_APP_INSTANCE_OCID }}\"}" \
