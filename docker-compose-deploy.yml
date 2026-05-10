@@ -2,7 +2,7 @@ services:
 
   web:
     build: .
-    image: vehicle_fleet_web:latest
+    image: ${IMAGE_PATH}
     command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py --workers 2 --threads 2 --worker-tmp-dir /dev/shm
     restart: always
     volumes:
