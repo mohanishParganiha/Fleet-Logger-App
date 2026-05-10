@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://80.225.203.44/api/$1"
+      "destination": "https://feet.mohanish.online/api/$1"
     }
   ]
 }

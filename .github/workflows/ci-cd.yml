@@ -68,83 +68,83 @@ jobs:
           name: coverage-report
           path: htmlcov/
 
-  build-and-package:
-    name: Build Docker Image
+  deploy:
     needs: test
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Build Django Image
-        run: docker compose -f docker-compose-deploy.yml build web
+      # Replaces oracle-actions/setup-oci-cli
+      - name: Install and Configure OCI CLI
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_IAM_USER_API_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
 
-      - name: Save Image to File
-        run: docker save vehicle_fleet_web:latest > web_image.tar
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_IAM_USER_OCID }}
+          fingerprint=${{ secrets.OCI_IAM_USER_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/oci_api_key.pem
+          EOF
 
-      - name: Upload Image and Config as Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-bundle
-          #we bundle the things together and ship it to OCI instance
-          path: |
-            web_image.tar
-            docker-compose-deploy.yml
-            nginx/nginx.conf
-            gunicorn_config.py
-          retention-days: 1
+          # Install CLI manually
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+          echo "/home/runner/bin" >> $GITHUB_PATH
 
+      - name: Login to OCIR
+        run: |
+          # Removed the trailing space after the backslash which often causes line-break errors
+          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io \
+          -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
 
-  deploy:
-    needs: build-and-package
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: deployment-bundle
+      - name: Build and push image
+        run: |
+          IMAGE_PATH="${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/my-app-repo:latest"
+          docker build -t $IMAGE_PATH .
+          docker push $IMAGE_PATH
 
-      - name: Prepare Server Directories
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.OCI_INSTANCE_IP }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.OCI_SSH_KEY }}
-          script: mkdir -p ~/app/nginx
+      - name: Execute Remote Deployment
+        run: |
+          # We use a heredoc to build the script.
+          # Note: $(cat ...) runs on the GitHub Runner to inject file content.
+          REMOTE_SCRIPT=$(cat <<EOF
+          mkdir -p ~/app/nginx
 
-      - name: Transfer to Server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.OCI_INSTANCE_IP }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.OCI_SSH_KEY }}
-          source: "web_image.tar,docker-compose-deploy.yml,nginx/nginx.conf,gunicorn_config.py"
-          target: "~/app"
+          cat <<EOT > ~/app/nginx/nginx.conf
+          $(cat nginx.conf)
+          EOT
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.OCI_INSTANCE_IP }}
-          username: ${{ secrets.OCI_USER }}
-          key: ${{ secrets.OCI_SSH_KEY }}
-          script: |
-            cd ~/app
-            # 1 load image to docker
-            docker load < web_image.tar
+          cat <<EOT > ~/app/docker-compose-deploy.yml
+          $(cat docker-compose-deploy.yml)
+          EOT
 
-            # 2. DELETE the tar file immediately to free up disk space
-            #rm  web_image.tar
+          cat <<EOT > ~/app/gunicorn_config.py
+          $(cat gunicorn_config.py)
+          EOT
 
-            # 3 stop the running containers
-            docker compose -f docker-compose-deploy.yml stop web
+          cd ~/app
 
-            # 4 use --remove-orphans to keep the 1gb ram server clean
-            docker compose -f docker-compose-deploy.yml up -d --remove-orphans
+          echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ${{ secrets.OCI_REGION }}.ocir.io -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
 
-            # 5 Run migrations (separate command to monitor for RAM spikes)
-            docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate --noinput
+          # Force pull the latest manifest from OCIR
+          docker compose -f docker-compose-deploy.yml pull
 
-            # 6 Collect static files
-            docker compose -f docker-compose-deploy.yml exec -T web python manage.py collectstatic --noinput
+          # Re-deploy
+          docker compose -f docker-compose-deploy.yml up -d --remove-orphans
 
-            # 7 free up space by removing the old images
-            docker image prune -f
+          # Clean up dangling images to save space on OCI boot volume
+          docker image prune -f
+          EOF
+          )
+
+          # Trigger the OCI Run Command
+          /home/runner/bin/oci compute-instance-agent command create \
+            --instance-id ${{ secrets.OCI_APP_INSTANCE_OCID }} \
+            --display-name "Deploy-${{ github.run_number }}" \
+            --content "{\"source\": {\"sourceType\": \"TEXT\", \"text\": \"$REMOTE_SCRIPT\"}}" \
+            --wait-for-state SUCCEEDED
