@@ -98,7 +98,7 @@ jobs:
 
       - name: Login to OCIR
         run: |
-          echo "${{ secrets.IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.IAM_USER_NAME }}" --password-stdin
+          echo "${{ secrets.IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.IAM_USER_NAME }}" --password-stdin
 
       - name: Build and push image
         run: |
@@ -119,7 +119,7 @@ jobs:
               ubuntu@ssh.mohanish.online << 'EOF'
             cd /home/ubuntu/Fleet-Logger-App
             git pull origin main
-            echo "${{ secrets.IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.IAM_USER_NAME }}" --password-stdin
+            echo "${{ secrets.IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.IAM_USER_NAME }}" --password-stdin
             docker compose -f docker-compose-deploy.yml pull
             docker compose -f docker-compose-deploy.yml down
             docker compose -f docker-compose-deploy.yml up -d --remove-orphans
