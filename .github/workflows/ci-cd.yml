@@ -131,11 +131,18 @@ jobs:
           EOF
           )
 
+          # Substitute placeholders with actual base64 values
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_NGINX/$B64_NGINX}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_GUNI/$B64_GUNI}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_COMPOSE/$B64_COMPOSE}"
+
           # Base64 encode script (safe for JSON)
-          ENCODED_SCRIPT=$(echo "$REMOTE_SCRIPT" | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+          ENCODED_SCRIPT=$(echo "$REMOTE_SCRIPT" | base64 -w 0)
 
           # Create JSON payload properly
-          PAYLOAD="{\"actionType\": \"RUN_SCRIPT\", \"source\": {\"sourceType\": \"INLINE\", \"text\": \"$ENCODED_SCRIPT\"}}" > command_content.json
+          echo "{\"actionType\": \"RUN_SCRIPT\", \"source\": {\"sourceType\": \"INLINE\", \"text\": \"$ENCODED_SCRIPT\"}}" > command_content.json
+          # verify its not empty
+          cat command_content.json
 
           # Trigger the OCI Run Command
           RESPONSE=$(/home/runner/bin/oci instance-agent command create \
@@ -144,6 +151,7 @@ jobs:
             --target "{\"instanceId\": \"${{ secrets.OCI_APP_INSTANCE_OCID }}\"}" \
             --content "file://command_content.json" \
             --timeout-in-seconds 600)
+
           # Extract the uniquely assigned Command ID from the response JSON
           COMMAND_ID=$(echo "$RESPONSE" | jq -r '.data.id')
           INSTANCE_ID="${{ secrets.OCI_APP_INSTANCE_OCID }}"
