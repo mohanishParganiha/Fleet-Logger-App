@@ -111,6 +111,8 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
+          echo "ID length: ${#CF_ACCESS_CLIENT_ID}"
+          echo "Secret length: ${#CF_ACCESS_CLIENT_SECRET}"
           curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
           chmod +x cloudflared
           ./cloudflared access ssh-gen --hostname ssh.mohanish.online
