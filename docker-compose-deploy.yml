@@ -2,13 +2,18 @@ services:
 
   web:
     build: .
-    image: vehicle_fleet_web:latest
+    image: ${IMAGE_PATH}
     command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py --workers 2 --threads 2 --worker-tmp-dir /dev/shm
     restart: always
     volumes:
       - static_volume:/app/staticfiles
     expose:
       - "8000"
+    dns:
+      - 169.254.169.254
+    dns_search:
+      - ${DNS1}
+      - ${DNS2}
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -28,6 +33,7 @@ services:
           memory: 600M
         reservations:
           memory: 400M
+
 
   nginx:
     image: nginx:alpine

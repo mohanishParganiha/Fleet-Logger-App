@@ -1,84 +1,100 @@
 Fleet Logger API 🚛
-A robust backend system designed to digitize and optimize logistics operations. This API facilitates trip documentation, fuel monitoring, and maintenance logging for fleet management.  
-
+A robust backend system designed to digitize and optimize logistics operations. This API facilitates trip documentation, fuel monitoring, and maintenance logging for fleet management.
+***
 🚀 Tech Stack
-Framework: Django & Django REST Framework (DRF)  
+Framework: Django & Django REST Framework (DRF)
 
-Database: PostgreSQL  
+Database: PostgreSQL (External/Managed)
 
-Containerization: Docker & Docker Compose  
+Containerization: Docker & Docker Compose
 
-Cloud Infrastructure: AWS (EC2/RDS) / OCI (Targeted)  
+Cloud Infrastructure: Oracle Cloud Infrastructure (OCI) / AWS
 
-CI/CD: GitHub Actions  
+CI/CD: GitHub Actions
 
-Frontend Hosting: Vercel  
+Frontend Hosting: Vercel
+***
+⚙️ Core Features
+Vehicle Management: Track specifications, maintenance schedules, and performance.
 
-⚙️ Core Features  
-Vehicle Management: Track vehicle specifications, maintenance schedules, and performance metrics.  
+Trip Logging: Record route details, driver info, and timestamps.
 
-Trip Logging: Record route details, driver information, and timestamps for every journey.  
+Fuel Monitoring: Automated tracking of consumption and costs.
 
-Fuel Monitoring: Automated tracking of fuel consumption and costs across the fleet.  
+Decoupled Architecture: Optimized for independent scaling of compute and data layers.
 
-Secure API: Token-based authentication for mobile and web frontends.
+🔐 Authentication
+The system uses a custom user model for enhanced security and flexibility:
 
-Cloud Scalability: Decoupled architecture allowing the Django server and PostgreSQL database to scale independently.  
+Identifier: Authentication is performed via Email (the default Django username field has been deprecated in this project).
 
-## Project Structure  
-
-```text
+Methods: Fully supports both Token-based Authentication (for mobile/external clients) and Session Authentication (for web dashboard access).
+***
+🗺️ Project Structure
+```bash
+Plaintext
 .
 ├── fleet/               # Main API Application (Django)
-├── users/               # User Authentication & Profiles
+├── users/               # User Authentication & Profiles (Email-based)
 ├── vehicle_fleet/       # Project Configuration & Settings
-├── new_frontend/        # Vibe-coded JS Dashboard (Vercel Hosted)
+├── new_frontend/        # Decoupled JS Dashboard (Vercel)
 ├── nginx/               # Nginx Reverse Proxy Configs
-├── docker-compose.yml   # Orchestration for Backend & DB
+├── docker-compose.yml   # Orchestration (App + Nginx)
 ├── Dockerfile           # Backend Containerization
-├── gunicorn_config.py   # Gunicorn config file
 └── requirements.txt     # Python Dependencies
-
-[!NOTE]
-The new_frontend is a decoupled JavaScript application. While the backend runs on Docker/AWS, the frontend is optimized for CI/CD deployment via Vercel.
 ```
-🚦 Getting Started (Local Development)  
-Prerequisites  
-Docker & Docker Compose  
+>[!NOTE]
+>The new_frontend is a decoupled application. While the backend runs on OCI/AWS, the frontend is optimized for CI/CD deployment via Vercel.
+***
+🚦 Getting Started (Local Development)
+Prerequisites
+Docker & Docker Compose
 
-Python 3.11+  
+Python 3.11+
 
-Installation  
-Clone the repository:  
+Installation
+Clone the repository:
 
-Bash
+```bash
 git clone https://github.com/mohanishParganiha/Fleet-Logger-App.git
 cd Fleet-Logger-App
-Set up environment variables:
-Create a .env file in the root directory:
-
-Code snippet
-```bash
-DEBUG=True
-SECRET_KEY=your-secret-key-here-change-me
-DB_NAME=fleet_db
-DB_USER=fleet_user
-DB_PASSWORD=your-secure-password
-DB_HOST=your-rds-endpoint.amazonaws.com
-DB_PORT=5432
-ALLOWED_HOSTS=yourdomain.com,your-ec2-ip-address
-CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1
-CSRF_TRUSTED_ORIGINS=http://localhost
 ```
-Run with Docker Compose:
-```bash
+Configure Environment:
+Create a .env file in the root directory. You must provide your own PostgreSQL instance details.
+
+Run with Docker:
+
+```Bash
 docker-compose up --build
 ```
-🚢 Deployment  
-The API is configured for a professional CI/CD pipeline using GitHub Actions.  
+***
+🚢 Deployment & Infrastructure
+The API is deployed using a professional CI/CD pipeline via GitHub Actions.
 
-Testing: Automated test suite runs on every push using a PostgreSQL sidecar service.  
+>[!IMPORTANT]
+>☁️ Cloud Infrastructure (OCI vs. AWS)
+>
+>This project is currently optimized for Oracle Cloud Infrastructure (OCI).
 
-Build: Docker images are packaged and prepared for distribution.  
+>[!WARNING]
+>Database Constraints:
+>
+>Due to the resource limitations of smaller OCI "Always Free" instances, this setup does not support hosting the >PostgreSQL database within the same Docker environment or server.
+>
+>You must deploy or configure your own external PostgreSQL database.
+>
+>OCI: Use a separate VM or OCI Managed PostgreSQL.
+>
+>AWS: If hosting on AWS, use Amazon RDS.
 
-Deployment: Automated via SSH to cloud instances (AWS EC2 / OCI), ensuring zero-downtime migrations and static file collection.  
+>[!IMPORTANT]
+>Configuration:
+>
+>If switching providers, ensure you update the .env variables and the GitHub Workflow YAML files to point to the correct DB host and credentials.
+
+🔄 CI/CD Workflow
+Testing: Automated suites run on every push using a PostgreSQL sidecar service.
+
+Build: Docker images are packaged and prepared for distribution.
+
+Deploy: Automated via SSH to OCI, ensuring zero-downtime migrations and automated static file collection.
