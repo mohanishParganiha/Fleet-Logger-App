@@ -108,48 +108,32 @@ jobs:
 
       - name: Execute Remote Deployment
         run: |
-          # 1. Read and encode repository files directly into local runner variables
-          B64_NGINX=$(base64 -w 0 ./nginx/nginx.conf)
-          B64_GUNI=$(base64 -w 0 ./gunicorn_config.py)
-          B64_COMPOSE=$(base64 -w 0 ./docker-compose-deploy.yml)
-
-          # 2. Define the exact script that will run natively on your server
+          # 1. Define the exact script that will run natively on your server
           # We use a variable so we can safely inject it into the final JSON payload
           REMOTE_SCRIPT=$(cat << EOF
           #!/bin/bash
           set -e
           TARGET_DIR="/home/ubuntu/app"
-          mkdir -p "\$TARGET_DIR/nginx"
-          echo '$B64_NGINX' | base64 -d > "\$TARGET_DIR/nginx/nginx.conf"
-          echo '$B64_GUNI' | base64 -d > "\$TARGET_DIR/gunicorn_config.py"
-          echo '$B64_COMPOSE' | base64 -d > "\$TARGET_DIR/docker-compose-deploy.yml"
-          sudo chown -R ubuntu:ubuntu "\$TARGET_DIR"
+          mkdir -p "\$TARGET_DIR"
           cd "\$TARGET_DIR"
-          export IMAGE_PATH="ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com/${{ secrets.OCI_TENANCY_NAMESPACE }}/my-app-repo:latest"
+          git pull origin feature/oci-migration
           echo "${{ secrets.OCI_IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.OCI_IAM_USER_NAME }}" --password-stdin
           docker compose -f docker-compose-deploy.yml pull && docker compose -f docker-compose-deploy.yml down && docker compose -f docker-compose-deploy.yml up -d --remove-orphans && docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate && docker image prune -f
           EOF
           )
 
-          # Substitute placeholders with actual base64 values
-          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_NGINX/$B64_NGINX}"
-          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_GUNI/$B64_GUNI}"
-          REMOTE_SCRIPT="${REMOTE_SCRIPT//PLACEHOLDER_COMPOSE/$B64_COMPOSE}"
-
           # Base64 encode script (safe for JSON)
           ENCODED_SCRIPT=$(echo "$REMOTE_SCRIPT" | base64 -w 0)
 
           # Create JSON payload properly
-          echo "{\"actionType\": \"RUN_SCRIPT\", \"source\": {\"sourceType\": \"INLINE\", \"text\": \"$ENCODED_SCRIPT\"}}" > command_content.json
-          # verify its not empty
-          cat command_content.json
+          PAYLOAD="{\"actionType\": \"RUN_SCRIPT\", \"source\": {\"sourceType\": \"INLINE\", \"text\": \"$ENCODED_SCRIPT\"}}"
 
           # Trigger the OCI Run Command
           RESPONSE=$(/home/runner/bin/oci instance-agent command create \
             --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
             --display-name "Deploy-${{ github.run_number }}" \
             --target "{\"instanceId\": \"${{ secrets.OCI_APP_INSTANCE_OCID }}\"}" \
-            --content "file://command_content.json" \
+            --content "$PAYLOAD" \
             --timeout-in-seconds 600)
 
           # Extract the uniquely assigned Command ID from the response JSON
