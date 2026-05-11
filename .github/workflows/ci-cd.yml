@@ -106,19 +106,13 @@ jobs:
           docker build -t $IMAGE_PATH .
           docker push $IMAGE_PATH
 
-      - name: Deploy via Cloudflare Tunnel
-        env:
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: |
-          echo "ID length: ${#CF_ACCESS_CLIENT_ID}"
-          echo "Secret length: ${#CF_ACCESS_CLIENT_SECRET}"
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-          chmod +x cloudflared
-          ./cloudflared access ssh-gen --hostname ssh.mohanish.online
-          ssh -o StrictHostKeyChecking=no \
-              -o ProxyCommand='./cloudflared access ssh --hostname ssh.mohanish.online' \
-              ubuntu@ssh.mohanish.online << 'EOF'
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_INSTANCE_IP }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
             cd /home/ubuntu/Fleet-Logger-App
             git pull origin main
             echo "${{ secrets.IAM_USER_AUTH_TOKEN }}" | docker login ocir.${{ secrets.OCI_REGION }}.oci.oraclecloud.com -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/Default/${{ secrets.IAM_USER_NAME }}" --password-stdin
@@ -127,4 +121,3 @@ jobs:
             docker compose -f docker-compose-deploy.yml up -d --remove-orphans
             docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate
             docker image prune -f
-          EOF
