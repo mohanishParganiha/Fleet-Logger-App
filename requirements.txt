@@ -4,3 +4,5 @@ django-filter==25.2
 psycopg2-binary==2.9.10
 gunicorn==23.0.0
 django-cors-headers==4.7.0
+drf_spectacular==0.29.0
+django-simple-history==3.11.0

@@ -4,10 +4,10 @@ from .models import User
 
 
 class UserAdmin(BaseUserAdmin):
-    list_display = ('email', 'username', 'is_admin',
+    list_display = ('email', 'username', 'is_manager',
                     'is_staff', 'date_created', 'date_updated')
 
-    list_filter = ('is_admin', 'is_staff', 'is_active')
+    list_filter = ('is_manager', 'is_staff', 'is_active')
 
     readonly_fields = ('date_created', 'date_updated')
 
@@ -15,7 +15,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('email', 'password')}),
         ('Personal info', {'fields': ('username',)}),
         ('Permissions', {'fields': (
-            'is_admin', 'is_staff', 'is_active',
+            'is_manager', 'is_staff', 'is_active',
             'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('date_created', 'date_updated')}),
     )

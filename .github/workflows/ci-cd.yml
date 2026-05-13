@@ -5,10 +5,12 @@ on:
     branches: [ "main"]
     paths-ignore:
       - 'new_frontend/**'
+      - 'README.md'
   pull_request:
     branches: [ main ]
     paths-ignore:
       - 'new_frontend/**'
+      - 'README.md'
 env:
   DOCKER_IMAGE: fleet-logger-api
   DB_NAME: test_db

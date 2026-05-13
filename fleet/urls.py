@@ -25,6 +25,9 @@ urlpatterns = [
     path(
         'trip-logs/<int:pk>/', views.TripLogDetailView.as_view(), name='triplog-detail'),
     path(
+        'trip-logs/<int:pk>/approve/', views.TripLogApproveView.as_view(), name='triplog-approve'
+    ),
+    path(
         'trip-logs/<int:pk>/calculate/', views.TripLogCalculationView.as_view(), name='triplog-calculate'
     )
 ]

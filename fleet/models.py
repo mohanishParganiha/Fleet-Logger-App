@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import User
+from simple_history.models import HistoricalRecords
 
 STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 
@@ -61,6 +62,9 @@ class TripLog(models.Model):
     drop_off = models.CharField(max_length=100, blank=True, null=True)
     diesel_fill = models.DecimalField(
         max_digits=6, decimal_places=2, blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['-date_time']

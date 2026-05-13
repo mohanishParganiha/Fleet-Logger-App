@@ -1,167 +1,514 @@
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
-from django.contrib.auth.models import User
-from fleet.models import *
+from rest_framework.authtoken.models import Token
 from decimal import Decimal
 from django.utils import timezone
+from datetime import timedelta
+from fleet.models import Vehicle, Driver, TripLog
+
+User = get_user_model()
+
+
+class AuthAPITest(APITestCase):
+    """Test API"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            email='admin@test.com',
+            username='admin',
+            password='admin123'
+        )
+
+    def test_login_returns_token_for_valid_credentials(self):
+        """Test if login endpoint returns token or not."""
+        response = self.client.post(
+            '/api/login/',
+            {'email': 'admin@test.com', 'password': 'admin123'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('token', response.data)
+        self.assertEqual(response.data['email'], 'admin@test.com')
+        self.assertTrue(response.data['is_staff'])
+        self.assertFalse(response.data['is_manager'])
+        self.assertTrue(Token.objects.filter(
+            key=response.data['token']).exists())
+
+    def test_login_fails_with_invalid_credentials(self):
+        """Test login faills with invalid credentials."""
+        response = self.client.post(
+            '/api/login/',
+            {'email': 'admin@test.com', 'password': 'wrongpass'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['error'], 'Invalid credentials')
+
+    def test_login_requires_email_and_password(self):
+        """Test login requires email and password both."""
+        response = self.client.post(
+            '/api/login/', {'email': 'admin@test.com'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
 
 
 class VehicleAPITest(APITestCase):
-    """test vehicle API endpoints"""
+    """Test Vhicle Endpoints."""
 
     def setUp(self):
-        """setup for testing vehicle api endpoint  and creating user"""
-
         self.client = APIClient()
-
-        # creating test admin user
         self.admin_user = User.objects.create_superuser(
-            username="admin",
-            password="admin123",
-            email="admin@test.com"
-
+            email='admin@test.com',
+            username='admin',
+            password='admin123'
         )
-
-        # create test regular user
-        self.regular_user = User.objects.create(
-            username="TestUser",
-            password="testPassword",
-            email="testuser@test.com"
+        self.manager_user = User.objects.create_user(
+            email='manager@test.com',
+            username='manager',
+            password='manager123',
+            is_manager=True
         )
-
-        # creating a default test vehicle
+        self.regular_user = User.objects.create_user(
+            email='user@test.com',
+            username='user',
+            password='user123'
+        )
         self.vehicle = Vehicle.objects.create(
-            model="Tata Ace",
-            registered_number="CG07XY1234",
-            status="active"
+            model='Tata Ace',
+            registered_number='CG07XY1234',
+            status='active'
         )
 
-    def test_vehicle_creation_as_admin(self):
-        """test a new vehicle is created with valid data and created correctly"""
-        payload = {
-            "model": "Tata Ace",
-            "registered_number": "CG07XY1235",
-            "status": "active"
-        }
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
 
-        self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post("/api/vehicles/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Vehicle.objects.count(), 2)
+    def test_vehicle_list_requires_authentication(self):
+        """Test vhicle listing requires authentication."""
+        response = self.client.get('/api/vehicles/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_vehicle_creation_as_regular_user(self):
-        """test vehicle creation as regular user which should fail"""
-        payload = {
-            "model": "Tata Ace",
-            "registered_number": "CG07XY1235",
-            "status": "active"
-        }
-        self.client.force_authenticate(user=self.regular_user)
-        response = self.client.post("/api/vehicles/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_vehicle_listing_unauthenticated(self):
-        """test list of vehicle is displayed or returned correctly """
-        response = self.client.get("/api/vehicles/")
+    def test_vehicle_list_authenticated_returns_results(self):
+        """Test vehicle authenticated vehicle listing returns response."""
+        self.authenticate(self.regular_user)
+        response = self.client.get('/api/vehicles/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results']
+                         [0]['registered_number'], 'CG07XY1234')
 
-    def test_list_vehicle_with_pagination(self):
-        """test pagination at work"""
-        # generate random data to fill up vehicle list
-        for i in range(11):
+    def test_vehicle_list_pagination_works(self):
+        """Test pagination of vehicle listing."""
+        self.authenticate(self.regular_user)
+        for index in range(11):
             Vehicle.objects.create(
-                model=f"Tata Ace{str(i)}",
-                registered_number=f"CG07XY{str(i)}23",
+                model=f'Tata Ace {index}',
+                registered_number=f'CG07XY12{index:02d}',
                 status='active'
             )
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get('/api/vehicles/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 10)
 
-    def test_list_vehicle_filtering(self):
-        """test vehcie listing with filteration"""
-        payload = {
-            "model": "tata",
-            "registered_number": "CG07CY1234",
-            "status": "inactive"
-        }
-        self.client.force_authenticate(user=self.admin_user)
-        self.client.post("/api/vehicles/", payload)
-        response = self.client.get("/api/vehicles/")
+    def test_vehicle_filtering_by_status(self):
+        """Test filtering vehicle listing by status """
+        self.authenticate(self.regular_user)
+        Vehicle.objects.create(
+            model='Tata Ace',
+            registered_number='CG07XY9999',
+            status='inactive'
+        )
+        response = self.client.get('/api/vehicles/?status=inactive')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['status'], 'inactive')
 
-    def test_update_vehicle_as_admin(self):
-        """admin can update vehicle"""
-        self.client.force_authenticate(user=self.admin_user)
+    def test_vehicle_create_as_admin(self):
+        """Test vehicle created as admin."""
+        self.authenticate(self.admin_user)
+        response = self.client.post(
+            '/api/vehicles/',
+            {'model': 'Tata Ace', 'registered_number': 'CG07XY1235', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Vehicle.objects.filter(
+            registered_number='CG07XY1235').count(), 1)
 
-        data = {"status": "inactive"}
-        response = self.client.patch(f"/api/vehicles/{self.vehicle.id}/", data)
+    def test_vehicle_create_as_manager(self):
+        """Test vehicle create as manager."""
+        self.authenticate(self.manager_user)
+        response = self.client.post(
+            '/api/vehicles/',
+            {'model': 'Tata Ace', 'registered_number': 'CG07XY1236', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_vehicle_create_as_regular_user_is_forbidden(self):
+        """Test vehicle create as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(
+            '/api/vehicles/',
+            {'model': 'Tata Ace', 'registered_number': 'CG07XY1237', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_vehicle_create_unauthenticated_is_unauthorized(self):
+        """Test vehicle create as unauthenticated is forbidden. """
+        response = self.client.post(
+            '/api/vehicles/',
+            {'model': 'Tata Ace', 'registered_number': 'CG07XY1237', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_vehicle_detail_requires_authentication(self):
+        """Test vehicle detail requires authentication."""
+        response = self.client.get(f'/api/vehicles/{self.vehicle.id}/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_vehicle_update_as_manager(self):
+        """Test vehicle update as manager."""
+        self.authenticate(self.manager_user)
+        response = self.client.patch(
+            f'/api/vehicles/{self.vehicle.id}/',
+            {'status': 'inactive'},
+            format='json'
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.vehicle.refresh_from_db()
-        self.assertEqual(self.vehicle.status, "inactive")
+        self.assertEqual(self.vehicle.status, 'inactive')
+
+    def test_vehicle_update_as_regular_user_forbidden(self):
+        """Test vehicle update as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.patch(
+            f'/api/vehicles/{self.vehicle.id}/',
+            {'status': 'inactive'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_vehicle_delete_as_admin(self):
+        """Test vehicle delete as admin."""
+        self.authenticate(self.admin_user)
+        response = self.client.delete(f'/api/vehicles/{self.vehicle.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Vehicle.objects.filter(id=self.vehicle.id).exists())
+
+    def test_vehicle_delete_as_manager_forbidden(self):
+        """Test vehicle delete as manager is forbidden."""
+        self.authenticate(self.manager_user)
+        response = self.client.delete(f'/api/vehicles/{self.vehicle.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class DriverAPITest(APITestCase):
+    """Test for Driver API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            email='admin@test.com',
+            username='admin',
+            password='admin123'
+        )
+        self.manager_user = User.objects.create_user(
+            email='manager@test.com',
+            username='manager',
+            password='manager123',
+            is_manager=True
+        )
+        self.regular_user = User.objects.create_user(
+            email='user@test.com',
+            username='user',
+            password='user123'
+        )
+        self.driver = Driver.objects.create(
+            name='Test Driver',
+            license_number='DL12345',
+            status='active'
+        )
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
+
+    def test_driver_list_requires_authentication(self):
+        """Test driver listing requires authentication."""
+        response = self.client.get('/api/drivers/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_driver_list_authenticated(self):
+        """Test driver listing as authenticated."""
+        self.authenticate(self.regular_user)
+        response = self.client.get('/api/drivers/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results']
+                         [0]['license_number'], 'DL12345')
+
+    def test_driver_create_as_manager(self):
+        """Test driver creation as manager."""
+        self.authenticate(self.manager_user)
+        response = self.client.post(
+            '/api/drivers/',
+            {'name': 'New Driver', 'license_number': 'DL99999', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_driver_create_as_regular_user_forbidden(self):
+        """Test driver creation as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(
+            '/api/drivers/',
+            {'name': 'New Driver', 'license_number': 'DL99999', 'status': 'active'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_driver_update_as_manager(self):
+        """Test driver update as manager."""
+        self.authenticate(self.manager_user)
+        response = self.client.patch(
+            f'/api/drivers/{self.driver.id}/',
+            {'status': 'inactive'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.status, 'inactive')
+
+    def test_driver_delete_as_admin(self):
+        """Test driver deletion as admin."""
+        self.authenticate(self.admin_user)
+        response = self.client.delete(f'/api/drivers/{self.driver.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Driver.objects.filter(id=self.driver.id).exists())
+
+    def test_driver_delete_as_manager_forbidden(self):
+        """Test driver deletion as manager is forbidden."""
+        self.authenticate(self.manager_user)
+        response = self.client.delete(f'/api/drivers/{self.driver.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class TripLogAPITest(APITestCase):
-    """Test TripLog API endpoints"""
+    """Test Trip Logs API."""
 
     def setUp(self):
-        """Setup test data"""
-        self.user = User.objects.create_user(
-            email='testuser',
-            password='test123'
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            email='admin@test.com',
+            username='admin',
+            password='admin123'
         )
-
+        self.manager_user = User.objects.create_user(
+            email='manager@test.com',
+            username='manager',
+            password='manager123',
+            is_manager=True
+        )
+        self.regular_user = User.objects.create_user(
+            email='user@test.com',
+            username='user',
+            password='user123'
+        )
         self.vehicle = Vehicle.objects.create(
-            registered_number="TRUCK001",
-            status="active"
+            registered_number='TRUCK001',
+            status='active'
         )
-
         self.driver = Driver.objects.create(
-            name="Test Driver",
-            license_number="DL12345",
-            status="active"
+            name='Test Driver',
+            license_number='DL12345',
+            status='active'
         )
-
         self.trip = TripLog.objects.create(
             vehicle=self.vehicle,
             driver=self.driver,
             date_time=timezone.now(),
             number_of_trips=5,
-            weight=Decimal("1000.00"),
-            distance_traveled=Decimal("100.00")
+            weight=Decimal('1000.00'),
+            distance_traveled=Decimal('100.00')
         )
 
-        self.client = APIClient()
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
 
-    def test_list_trips_authenticated(self):
-        """Authenticated users can view trips"""
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get('/api/trip-logs/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_list_trips_unauthenticated(self):
-        """Unauthenticated users cannot view trips"""
+    def test_triplog_list_requires_authentication(self):
+        """Test triplogs listing requires authentication."""
         response = self.client.get('/api/trip-logs/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_calculate_single_trip_weight(self):
-        """Test single trip calculation by weight"""
-        self.client.force_authenticate(user=self.user)
+    def test_triplog_list_authenticated(self):
+        """Test triplogs listting as authenticated."""
+        self.authenticate(self.regular_user)
+        response = self.client.get('/api/trip-logs/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'][0]['vehicle'], 'TRUCK001')
 
-        data = {
-            'rate': '10.50',
-            'calc_type': 'weight'
-        }
+    def test_triplog_create_authenticated(self):
+        """Test triplogs creation as authenticated."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(
+            '/api/trip-logs/',
+            {
+                'vehicle': self.vehicle.registered_number,
+                'driver': self.driver.license_number,
+                'date_time': timezone.now().isoformat(),
+                'number_of_trips': 2,
+                'weight': '100.00',
+                'distance_traveled': '50.00'
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(TripLog.objects.count(), 2)
 
+    def test_triplog_create_unauthenticated(self):
+        """Test triplogs create as unauthenticated ."""
+        response = self.client.post(
+            '/api/trip-logs/',
+            {
+                'vehicle': self.vehicle.registered_number,
+                'driver': self.driver.license_number,
+                'date_time': timezone.now().isoformat(),
+                'number_of_trips': 2
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_triplog_detail_authenticated(self):
+        """Test triplogs detail as authenticated."""
+        self.authenticate(self.regular_user)
+        response = self.client.get(f'/api/trip-logs/{self.trip.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['vehicle'],
+                         self.vehicle.registered_number)
+
+    def test_triplog_update_as_manager(self):
+        """Test triplogs update as manager."""
+        self.authenticate(self.manager_user)
+        response = self.client.patch(
+            f'/api/trip-logs/{self.trip.id}/',
+            {'number_of_trips': 7},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.number_of_trips, 7)
+
+    def test_triplog_update_as_regular_user_forbidden(self):
+        """Test triplogs update as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.patch(
+            f'/api/trip-logs/{self.trip.id}/',
+            {'number_of_trips': 7},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_triplog_approve_as_admin(self):
+        """Test triplogs approve as admin."""
+        self.authenticate(self.admin_user)
+        response = self.client.post(f'/api/trip-logs/{self.trip.id}/approve/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.trip.refresh_from_db()
+        self.assertTrue(self.trip.is_approved)
+
+    def test_triplog_approve_as_regular_user_forbidden(self):
+        """Test triplogs approve as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(f'/api/trip-logs/{self.trip.id}/approve/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_triplog_calculate_weight_as_manager(self):
+        """Test triplogs calculate weight as manager."""
+        self.authenticate(self.manager_user)
         response = self.client.post(
             f'/api/trip-logs/{self.trip.id}/calculate/',
-            data
+            {'rate': '10.50', 'calc_type': 'weight'},
+            format='json'
         )
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('amount', response.data)
+        self.assertEqual(float(response.data['amount']), float(
+            Decimal('1000.00') * 5 * Decimal('10.50')))
 
-        # Expected: 5 trips * 1000 kg * 10.50 = 52,500
-        expected = float(5 * 1000 * Decimal('10.50'))
-        self.assertEqual(float(response.data['amount']), expected)
+    def test_triplog_calculate_invalid_calc_type(self):
+        """Test triplogs calculate invalid calc type."""
+        self.authenticate(self.manager_user)
+        response = self.client.post(
+            f'/api/trip-logs/{self.trip.id}/calculate/',
+            {'rate': '10.50', 'calc_type': 'volume'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+    def test_triplog_calculate_requires_manager_or_admin(self):
+        """Test triplogs calculation  requrie manager or admin."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(
+            f'/api/trip-logs/{self.trip.id}/calculate/',
+            {'rate': '10.50', 'calc_type': 'weight'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_triplog_bulk_calculate_as_manager(self):
+        """Test triplogs bulk calculate as manager."""
+        self.authenticate(self.manager_user)
+        TripLog.objects.create(
+            vehicle=self.vehicle,
+            driver=self.driver,
+            date_time=timezone.now() - timedelta(days=1),
+            number_of_trips=2,
+            weight=Decimal('500.00'),
+            distance_traveled=Decimal('20.00')
+        )
+        response = self.client.post(
+            '/api/trip-logs/calculate-bulk/',
+            {
+                'start_date': (timezone.now() - timedelta(days=2)).date().isoformat(),
+                'end_date': timezone.now().date().isoformat(),
+                'rate': '5',
+                'calc_type': 'weight'
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['calc_type'], 'weight')
+        self.assertGreaterEqual(response.data['total_amount'], 0.0)
+
+    def test_triplog_bulk_calculate_invalid_date(self):
+        """Test triplogs bulk calculate invalid date."""
+        self.authenticate(self.manager_user)
+        response = self.client.post(
+            '/api/trip-logs/calculate-bulk/',
+            {
+                'start_date': '2025-13-01',
+                'end_date': '2025-01-10',
+                'rate': '5',
+                'calc_type': 'weight'
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+    def test_triplog_bulk_calculate_as_regular_user_forbidden(self):
+        """Test triplogs bulk calculate as regular user is forbidden."""
+        self.authenticate(self.regular_user)
+        response = self.client.post(
+            '/api/trip-logs/calculate-bulk/',
+            {
+                'start_date': (timezone.now() - timedelta(days=2)).date().isoformat(),
+                'end_date': timezone.now().date().isoformat(),
+                'rate': '5',
+                'calc_type': 'weight'
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

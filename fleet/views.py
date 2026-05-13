@@ -8,9 +8,10 @@ from .models import Vehicle, Driver, TripLog
 from .serializers import VehicleSerializer, DriverSerializer, TripLogSerializer
 from decimal import Decimal
 from datetime import datetime
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
 from .filters import TripLogFilter, VehicleFilter, DriverFilter
+from .permissions import IsManager
 # Create your views here.
 
 
@@ -37,7 +38,9 @@ class LoginView(APIView):
                     "token": token.key,
                     "user_id": user.id,  # type:ignore
                     "email": user.email,
-                    "is_staff": user.is_staff}
+                    "is_staff": user.is_staff,
+                    "is_manager": user.is_manager  # type:ignore
+                }
             )
         else:
             return Response(
@@ -54,8 +57,8 @@ class VehicleListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
+            return [(IsAdminUser | IsManager)()]
+        return [IsAuthenticated()]
 
 
 class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -63,9 +66,11 @@ class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = VehicleSerializer
 
     def get_permissions(self):
-        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+        if self.request.method == "DELETE":
             return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
+        elif self.request.method == "GET":
+            return [IsAuthenticated()]
+        return [(IsAdminUser | IsManager)()]
 
 
 class DriverListCreateView(generics.ListCreateAPIView):
@@ -76,8 +81,8 @@ class DriverListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
+            return [(IsAdminUser | IsManager)()]
+        return [IsAuthenticated()]
 
 
 class DriverDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -85,9 +90,11 @@ class DriverDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DriverSerializer
 
     def get_permissions(self):
-        if self.request.method in ["PATCH", "PUT", "DELETE"]:
+        if self.request.method == "DELETE":
             return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
+        elif self.request.method == "GET":
+            return [IsAuthenticated()]
+        return [(IsAdminUser | IsManager)()]
 
 
 class TripLogListCreateView(generics.ListCreateAPIView):
@@ -101,12 +108,47 @@ class TripLogListCreateView(generics.ListCreateAPIView):
 class TripLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = TripLog.objects.all()
     serializer_class = TripLogSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in ['DELETE']:
+            return [IsAdminUser()]
+        if self.request.method == "GET":
+            return [IsAuthenticated()]
+        return [(IsManager | IsAdminUser)()]
+
+
+class TripLogApproveView(APIView):
+    def get_permissions(self):
+        return [(IsAdminUser | IsManager)()]
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            trip = TripLog.objects.get(pk=pk)
+        except TripLog.DoesNotExist:
+            return Response(
+                {"error": "Trip not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # prevent redundant database operations
+        if trip.is_approved:
+            return Response(
+                {"error": "This trip has already been approved and locked"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        trip.is_approved = True
+        trip.save()  # saves to postgresql and trigger simple history automation
+        return Response(
+            {"status": "Success",
+                "detail": f"Trip log id {pk} has been approved and locked."},
+            status=status.HTTP_200_OK
+        )
 
 
 class TripLogCalculationView(APIView):
     """calculation rate for single trip"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser | IsManager]
 
     def post(self, request, pk):
         # get trip object
@@ -191,7 +233,7 @@ class TripLogCalculationView(APIView):
 
 class TripLogBulkCalculateView(APIView):
     """calculate total rate for multiple trips in date range."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser | IsManager]
 
     def post(self, request):
         # extract the data from request

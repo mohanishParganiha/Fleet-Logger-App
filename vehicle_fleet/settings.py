@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'django_filters',
     'rest_framework.authtoken',
     'corsheaders',
@@ -168,6 +169,8 @@ if DEBUG:
 
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
@@ -191,6 +194,13 @@ REST_FRAMEWORK = {
         'user': '1000/day'  # Authenticated users
     },
 
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'FLEET-LOGGER-API',
+    'DESCRIPTION': 'Automated interactive API documentation',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 if not DEBUG:
