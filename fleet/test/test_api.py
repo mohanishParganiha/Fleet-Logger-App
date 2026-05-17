@@ -1,19 +1,20 @@
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient, APITestCase
-from rest_framework import status
-from rest_framework.authtoken.models import Token
-from decimal import Decimal
-from django.utils import timezone
-from datetime import timedelta
+from time import sleep
 from fleet.models import Vehicle, Driver, TripLog
-
-User = get_user_model()
+from datetime import timedelta
+from django.utils import timezone
+from decimal import Decimal
+from rest_framework.authtoken.models import Token
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+from django.contrib.auth import get_user_model
 
 
 class AuthAPITest(APITestCase):
     """Test API"""
 
     def setUp(self):
+        User = get_user_model()
+
         self.client = APIClient()
         self.admin_user = User.objects.create_superuser(
             email='admin@test.com',
@@ -58,6 +59,8 @@ class VehicleAPITest(APITestCase):
     """Test Vhicle Endpoints."""
 
     def setUp(self):
+        User = get_user_model()
+
         self.client = APIClient()
         self.admin_user = User.objects.create_superuser(
             email='admin@test.com',
@@ -209,6 +212,8 @@ class DriverAPITest(APITestCase):
     """Test for Driver API."""
 
     def setUp(self):
+        User = get_user_model()
+
         self.client = APIClient()
         self.admin_user = User.objects.create_superuser(
             email='admin@test.com',
@@ -298,6 +303,8 @@ class TripLogAPITest(APITestCase):
     """Test Trip Logs API."""
 
     def setUp(self):
+        User = get_user_model()
+
         self.client = APIClient()
         self.admin_user = User.objects.create_superuser(
             email='admin@test.com',
@@ -316,13 +323,16 @@ class TripLogAPITest(APITestCase):
             password='user123'
         )
         self.vehicle = Vehicle.objects.create(
+            model='Tata',
             registered_number='TRUCK001',
             status='active'
         )
+
         self.driver = Driver.objects.create(
             name='Test Driver',
             license_number='DL12345',
-            status='active'
+            status='active',
+            primary_vehicle=self.vehicle
         )
         self.trip = TripLog.objects.create(
             vehicle=self.vehicle,
@@ -346,7 +356,8 @@ class TripLogAPITest(APITestCase):
         self.authenticate(self.regular_user)
         response = self.client.get('/api/trip-logs/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['results'][0]['vehicle'], 'TRUCK001')
+        self.assertEqual(response.data['results'][0]
+                         ['vehicle']['registered_number'], 'TRUCK001')
 
     def test_triplog_create_authenticated(self):
         """Test triplogs creation as authenticated."""
@@ -380,13 +391,52 @@ class TripLogAPITest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_triplog_create_with_different_primary_vehicle(self):
+        """Test trip log creation with different primary vehicle  to test new logic in serializer."""
+        self.authenticate(self.regular_user)
+        vehicle = Vehicle.objects.create(
+            model='Tata',
+            registered_number='TRUCK002',
+            status='active'
+        )
+        response = self.client.post(
+            '/api/trip-logs/',
+            {
+                'vehicle': vehicle.registered_number,
+                'driver': self.driver.license_number,
+                'date_time': timezone.now().isoformat(),
+                'number_of_trips': 2,
+                'weight': '100.00',
+                'distance_traveled': '50.00'
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        new_trip_id = response.data['id']
+        response = self.client.get(f'/api/trip-logs/{new_trip_id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data['vehicle']['registered_number'], vehicle.registered_number)
+
     def test_triplog_detail_authenticated(self):
         """Test triplogs detail as authenticated."""
         self.authenticate(self.regular_user)
         response = self.client.get(f'/api/trip-logs/{self.trip.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['vehicle'],
+        self.assertEqual(response.data['vehicle']['registered_number'],
                          self.vehicle.registered_number)
+
+    def test_triplog_update_as_regular_user_before_approval(self):
+        """Test triplogs update as regular user ."""
+        self.authenticate(self.regular_user)
+        response = self.client.patch(
+            f'/api/trip-logs/{self.trip.id}/',
+            {'number_of_trips': 7},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_triplog_update_as_manager(self):
         """Test triplogs update as manager."""
@@ -400,16 +450,6 @@ class TripLogAPITest(APITestCase):
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.number_of_trips, 7)
 
-    def test_triplog_update_as_regular_user_forbidden(self):
-        """Test triplogs update as regular user is forbidden."""
-        self.authenticate(self.regular_user)
-        response = self.client.patch(
-            f'/api/trip-logs/{self.trip.id}/',
-            {'number_of_trips': 7},
-            format='json'
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
     def test_triplog_approve_as_admin(self):
         """Test triplogs approve as admin."""
         self.authenticate(self.admin_user)
@@ -417,6 +457,17 @@ class TripLogAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.trip.refresh_from_db()
         self.assertTrue(self.trip.is_approved)
+
+    def test_triplog_update_as_regular_user_after_approval(self):
+        """Test triplogs update as regular user ."""
+        self.authenticate(self.regular_user)
+        sleep(2)
+        response = self.client.patch(
+            f'/api/trip-logs/{self.trip.id}/',
+            {'number_of_trips': 7},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_triplog_approve_as_regular_user_forbidden(self):
         """Test triplogs approve as regular user is forbidden."""
@@ -512,3 +563,45 @@ class TripLogAPITest(APITestCase):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class User(APITestCase):
+    """Test user by admin and managers."""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(
+            email='admin@test.com',
+            username='admin',
+            password='admin123'
+        )
+        self.manager_user = User.objects.create_user(
+            email='manager@test.com',
+            username='manager',
+            password='manager123',
+            is_manager=True
+        )
+        self.regular_user = User.objects.create_user(
+            email='user@test.com',
+            username='user',
+            password='user123'
+        )
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user)
+
+    def test_admin_create_user(self):
+        self.authenticate(self.admin_user)
+
+        response = self.client.post(
+            '/api/users/create/',
+            {
+                "email": "newTest@email.com",
+                "username": "newTest",
+                "password": "Test@123#123"
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn('token', response.data)

@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Sum, F
+from django.db.models import Sum, F, QuerySet
 from .models import Vehicle, Driver, TripLog
 from .serializers import VehicleSerializer, DriverSerializer, TripLogSerializer
 from decimal import Decimal
@@ -98,23 +98,33 @@ class DriverDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class TripLogListCreateView(generics.ListCreateAPIView):
-    queryset = TripLog.objects.all()
     serializer_class = TripLogSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TripLogFilter
 
+    def get_queryset(self):  # type:ignore
+        return TripLog.objects.get_queryset().select_related(
+            'vehicle',
+            'driver',
+            'driver__primary_vehicle'
+        )
+
 
 class TripLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = TripLog.objects.all()
     serializer_class = TripLogSerializer
+
+    def get_queryset(self):  # type:ignore
+        return TripLog.objects.get_queryset().select_related(
+            'vehicle',
+            'driver',
+            'driver__primary_vehicle'
+        )
 
     def get_permissions(self):
         if self.request.method in ['DELETE']:
             return [IsAdminUser()]
-        if self.request.method == "GET":
-            return [IsAuthenticated()]
-        return [(IsManager | IsAdminUser)()]
+        return [IsAuthenticated()]
 
 
 class TripLogApproveView(APIView):

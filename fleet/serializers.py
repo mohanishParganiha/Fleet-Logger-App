@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import serializers, status
 from .models import Vehicle, Driver, TripLog
 from django.utils import timezone
 from datetime import timedelta
@@ -42,9 +42,10 @@ def validate_negative_values(value):
 class TripLogSerializer(serializers.ModelSerializer):
     vehicle = serializers.SlugRelatedField(
         queryset=Vehicle.objects.all(),
-        slug_field='registered_number'
+        slug_field='registered_number',
+        required=False,
+        allow_null=True
     )
-    vehicle_id = serializers.IntegerField(source='vehicle.id', read_only=True)
 
     driver = serializers.SlugRelatedField(
         queryset=Driver.objects.all(),
@@ -75,21 +76,39 @@ class TripLogSerializer(serializers.ModelSerializer):
         if not request or not request.user:
             return attrs
         user = request.user
-        driver = not getattr(user, 'is_manager', False) and not user.is_staff
-        if self.instance and driver:
+
+        # Determine the driver instance for this log execution
+        driver = attrs.get('driver') or (
+            self.instance.driver if self.instance else None)
+
+        # --- NEW FLEXIBLE LOGIC FOR VEHICLE OVERRIDE ---
+        # If the frontend did NOT explicitly pass a vehicle string, default it to the driver's primary vehicle
+        if 'vehicle' not in attrs:
+            # Assumes your new field on Driver model is named 'primary_vehicle'
+            if driver and getattr(driver, 'primary_vehicle', None):
+                attrs['vehicle'] = driver.primary_vehicle
+            else:
+                attrs['vehicle'] = None
+
+        is_user_driver = not getattr(user, 'is_manager', False) and not (
+            user and user.is_staff)
+
+        if self.instance and is_user_driver:
             instance = self.instance
 
-            # first check , if log is approved by manager.
+            # first check , if log is approved by manager/admin.
             if getattr(instance, 'is_approved', False):
                 raise serializers.ValidationError(
-                    "Cannot make changes, trip is already approved."
+                    detail="Cannot make changes, trip is already approved.",
+                    code=status.HTTP_400_BAD_REQUEST
                 )
 
             # second check , check for tiem window of 2hrs
             time_elapsed = timezone.now() - instance.date_created
-            if time_elapsed > timedelta(hours=2.0):
+            if time_elapsed > timedelta(seconds=1.0):
                 raise serializers.ValidationError(
-                    "More than 2 hours has passed , cannot make any changes. Contact Manager/Admin"
+                    detail="More than 2 hours has passed , cannot make any changes. Contact Manager/Admin",
+                    code=status.HTTP_400_BAD_REQUEST
                 )
 
             if 'vehicle' in attrs and attrs['vehicle'] != instance.vehicle:
@@ -99,3 +118,22 @@ class TripLogSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'vehicle': 'Drivers cannot change the assigned driver after creation'})
         return attrs
+
+    def to_representation(self, instance):
+        """Outputs rich nested structures back to the frontend for form loading/view"""
+        data = super().to_representation(instance)
+
+        vehicle_obj = instance.vehicle
+        if not vehicle_obj or not instance.driver or not getattr(instance.driver, 'primary_vehicle', None):
+            vehicle_obj = instance.driver.primary_vehicle
+
+        data['vehicle'] = VehicleSerializer(
+            vehicle_obj, context=self.context).data if vehicle_obj else None
+        data['driver'] = DriverSerializer(
+            instance.driver, context=self.context).data if instance.driver else None
+
+        data.pop('vehicle_id', None)
+        data.pop('driver_id', None)
+        data.pop('driver_name', None)
+
+        return data

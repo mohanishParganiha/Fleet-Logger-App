@@ -13,6 +13,9 @@ class TripLogFilter(django_filters.FilterSet):
         field_name='vehicle__registered_number', label='VEHICLE REGISTERED NUMBER')
     driver = django_filters.CharFilter(
         field_name='driver__license_number', label='DRIVER LICENSE NUMBER')
+    status = django_filters.BooleanFilter(
+        field_name='is_approved', lookup_expr='exact', label='APPROVED STATUS'
+    )
 
     class Meta:
         model = TripLog

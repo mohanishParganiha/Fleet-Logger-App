@@ -36,6 +36,8 @@ class Driver(models.Model):
     name = models.CharField(max_length=100, null=False,
                             blank=False, unique=False)
     license_number = models.CharField(max_length=15, blank=False, unique=True)
+    primary_vehicle = models.ForeignKey(
+        Vehicle, null=True, blank=True, on_delete=models.SET_NULL)
     status = models.CharField(
         max_length=10, default='active', choices=STATUS_CHOICES)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -51,6 +53,7 @@ class Driver(models.Model):
 class TripLog(models.Model):
     """Models for logs."""
     date_time = models.DateTimeField(blank=False, unique=False)
+    date_created = models.DateTimeField(auto_now_add=True)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     number_of_trips = models.IntegerField(blank=False)
