@@ -1,5 +1,5 @@
 from django.db import models
-from users.models import User
+from vehicle_fleet import settings
 from simple_history.models import HistoricalRecords
 
 STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
@@ -27,7 +27,7 @@ class Vehicle(models.Model):
 class Driver(models.Model):
     """Model for Drives."""
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='driver_profile',
         blank=True,
         null=True,

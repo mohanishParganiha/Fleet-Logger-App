@@ -273,6 +273,29 @@ class DriverAPITest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_driver_create_as_manager_linking_user(self):
+        """Test the creation of driver with linked user"""
+        self.authenticate(self.manager_user)
+        response = self.client.post(
+            '/api/drivers/',
+            {'name': 'New Driver 2', 'license_number': 'DL999991',
+                'status': 'active', 'user': self.regular_user.id},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_driver_create_as_admin_linking_user(self):
+        """Test the creation of driver with linked user"""
+        self.authenticate(self.admin_user)
+
+        response = self.client.post(
+            '/api/drivers/',
+            {'name': 'New Driver 3', 'license_number': 'DL999992',
+                'status': 'active', 'user': self.regular_user.id},
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_driver_update_as_manager(self):
         """Test driver update as manager."""
         self.authenticate(self.manager_user)
@@ -604,4 +627,34 @@ class User(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn('token', response.data)
+
+    def test_manager_create_user(self):
+        self.authenticate(self.manager_user)
+
+        response = self.client.post(
+            '/api/users/create/',
+            {
+                "email": "newTest@email.com",
+                "username": "newTest",
+                "password": "Test@123#123"
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn('token', response.data)
+
+    def test_regular_user_create_user(self):
+        self.authenticate(self.regular_user)
+
+        response = self.client.post(
+            '/api/users/create/',
+            {
+                "email": "newTest@email.com",
+                "username": "newTest",
+                "password": "Test@123#123"
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertNotIn('token', response.data)
