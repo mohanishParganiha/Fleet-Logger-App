@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Sum, F, QuerySet
 from .models import Vehicle, Driver, TripLog
-from .serializers import VehicleSerializer, DriverSerializer, TripLogSerializer
+from .serializers import VehicleSerializer, DriverSerializer, TripLogSerializer, LoginRequestSerializer, LoginResponseSerializer
 from decimal import Decimal
 from datetime import datetime
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -14,7 +14,33 @@ from .filters import TripLogFilter, VehicleFilter, DriverFilter
 from .permissions import IsManager
 # Create your views here.
 
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from rest_framework.serializers import Serializer, CharField
 
+
+# Explicitly document the LoginView
+@extend_schema(
+    request=LoginRequestSerializer,
+    responses={
+        # 1. Use OpenApiResponse to handle your success data body format
+        200: OpenApiResponse(
+            response=LoginResponseSerializer,
+            description="Successfully authenticated. Returns profile metadata."
+        )
+    },
+    # 2. Inject response headers inside the parameters array explicitly
+    parameters=[
+        OpenApiParameter(
+            name='Set-Cookie',
+            type=str,
+            location=OpenApiParameter.HEADER,  # Tells Swagger it is an HTTP Header
+            description="Contains auth_token=...; HttpOnly; Secure; SameSite=Lax",
+            response=True  # CRITICAL: Tells the system this is a RESPONSE header, not a request parameter
+        )
+    ],
+    description="Authenticates credentials, returns profile metadata, and drops a secure HttpOnly cookie."
+)
 class LoginView(APIView):
     """login endpoint - returns auth token"""
     permission_classes = []  # allows any one to login
@@ -56,6 +82,26 @@ class LoginView(APIView):
             )
 
 
+# Explicitly document the LogoutView
+@extend_schema(
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            response=None,  # Informs Swagger that the response JSON body is blank
+            description="Successfully logged out."
+        )
+    },
+    parameters=[
+        OpenApiParameter(
+            name='Set-Cookie',
+            type=str,
+            location=OpenApiParameter.HEADER,
+            description="Clears the authentication token cookie by forcing max-age=0",
+            response=True
+        )
+    ],
+    description="Permanently deletes the database token and instructs the browser to erase the HttpOnly cookie."
+)
 class LogoutView(APIView):
     """View to clear cookies on logout."""
     # Ensure only logged-in users can access this endpoint

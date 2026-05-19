@@ -2,8 +2,9 @@ from rest_framework import serializers, status
 from .models import Vehicle, Driver, TripLog
 from django.utils import timezone
 from datetime import timedelta
-# simple login serializer
 
+
+# simple login serializer
 
 class LoginRequestSerializer(serializers.Serializer):
     email = serializers.CharField(required=True)
@@ -12,13 +13,12 @@ class LoginRequestSerializer(serializers.Serializer):
 
 class LoginResponseSerializer(serializers.Serializer):
     email = serializers.CharField()
-    token = serializers.CharField()
     user_id = serializers.CharField()
     is_staff = serializers.BooleanField()
     is_manager = serializers.BooleanField()
 
-# simple Vehicle serializer
 
+# simple Vehicle serializer
 
 class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
