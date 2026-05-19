@@ -5,6 +5,9 @@ urlpatterns = [
     # login endpoint
     path('login/', views.LoginView.as_view(), name='login'),
 
+    # logout endpoint
+    path('logout/', views.LogoutView.as_view(), name='logout'),
+
     # user endpoints
     path('users/create/', CreateUser.as_view(), name='create-users'),
 

@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics
-from rest_framework.permissions import IsAdminUser
+from rest_framework import generics, status
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from fleet.permissions import IsManager
 from .serializers import RegisterSerializer, UserSerializer
-
+from rest_framework.response import Response
 User = get_user_model()
 
 

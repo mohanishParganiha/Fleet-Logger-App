@@ -9,50 +9,65 @@ from rest_framework.test import APIClient, APITestCase
 from django.contrib.auth import get_user_model
 
 
-class AuthAPITest(APITestCase):
-    """Test API"""
+class AuthenticationTest(APITestCase):
+    def setUp(self) -> None:
+        self.client = APIClient()
 
-    def setUp(self):
         User = get_user_model()
 
-        self.client = APIClient()
-        self.admin_user = User.objects.create_superuser(
-            email='admin@test.com',
-            username='admin',
-            password='admin123'
+        self.user = User.objects.create_user(
+            email='test@email.com',
+            username='Test User',
+            password='TestPass123'
         )
 
-    def test_login_returns_token_for_valid_credentials(self):
-        """Test if login endpoint returns token or not."""
+    def test_login_authenticate_sucess(self):
+        """Test if login is sucessful."""
         response = self.client.post(
             '/api/login/',
-            {'email': 'admin@test.com', 'password': 'admin123'},
+            {
+                'email': 'test@email.com',
+                'password': 'TestPass123'
+            },
             format='json'
         )
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('token', response.data)
-        self.assertEqual(response.data['email'], 'admin@test.com')
-        self.assertTrue(response.data['is_staff'])
-        self.assertFalse(response.data['is_manager'])
-        self.assertTrue(Token.objects.filter(
-            key=response.data['token']).exists())
+        self.assertIn('auth_token', response.cookies)
+        self.assertTrue(response.cookies['auth_token']['httponly'])
 
-    def test_login_fails_with_invalid_credentials(self):
-        """Test login faills with invalid credentials."""
+    def test_endpoint_injecting_token_in_cookies(self):
+        """Test  endpoint response ok by injecting token in cookies."""
+        token = Token.objects.create(user=self.user)
+
+        self.client.cookies['auth_token'] = token.key
+
+        response = self.client.get('/api/drivers/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_logout_clears_cookies(self):
+        """Test user logout clears cookies."""
+        token = Token.objects.create(user=self.user)
+
+        self.client.cookies['auth_token'] = token.key
+
         response = self.client.post(
-            '/api/login/',
-            {'email': 'admin@test.com', 'password': 'wrongpass'},
-            format='json'
+            '/api/logout/'
         )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['error'], 'Invalid credentials')
 
-    def test_login_requires_email_and_password(self):
-        """Test login requires email and password both."""
-        response = self.client.post(
-            '/api/login/', {'email': 'admin@test.com'}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('auth_token', response.cookies)
+
+        logout_cookie = response.cookies['auth_token']
+        # Standard format used by Django test client
+        self.assertEqual(logout_cookie['max-age'], 0)
+        # Value should be completely wiped blank
+        self.assertEqual(logout_cookie.value, '')
+
+        # Assertion 4: Verify the token was permanently erased from the database
+        token_exists = Token.objects.filter(key=token.key).exists()
+        self.assertFalse(token_exists)
 
 
 class VehicleAPITest(APITestCase):

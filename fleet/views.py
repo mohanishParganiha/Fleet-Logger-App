@@ -33,20 +33,57 @@ class LoginView(APIView):
 
         if user:
             token, created = Token.objects.get_or_create(user=user)
-            return Response(
+            response = Response(
                 {
-                    "token": token.key,
                     "user_id": user.id,  # type:ignore
                     "email": user.email,
                     "is_staff": user.is_staff,
                     "is_manager": user.is_manager  # type:ignore
                 }
             )
+            response.set_cookie(
+                key='auth_token',
+                value=token.key,
+                httponly=True,
+                secure=True,
+                samesite='Lax',
+            )
+            return response
         else:
             return Response(
                 {"error": "Invalid credentials"},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+
+class LogoutView(APIView):
+    """View to clear cookies on logout."""
+    # Ensure only logged-in users can access this endpoint
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Delete the token from the database so it can never be reused
+        if request.auth:
+            request.auth.delete()
+
+        # 2. Create the success response payload
+        response = Response(
+            {"detail": "Successfully logged out."},
+            status=status.HTTP_200_OK
+        )
+
+        # 3. Wipe the cookie out of the browser by setting its max_age to 0
+        response.set_cookie(
+            key='auth_token',
+            value='',
+            max_age=0,          # Tells browser to delete the cookie instantly
+            expires='Thu, 01 Jan 1970 00:00:00 GMT',  # Backwards compatibility
+            httponly=True,
+            secure=True,        # Must match your login view settings
+            samesite='Lax',     # Must match your login view settings
+        )
+
+        return response
 
 
 class VehicleListCreateView(generics.ListCreateAPIView):

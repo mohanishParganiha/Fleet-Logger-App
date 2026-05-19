@@ -158,6 +158,8 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
     'http://localhost:8080,http://127.0.0.1:8080'
 ).split(',')
 
+CORS_ALLOW_CREDENTIALS = True
+
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     'CSRF_TRUSTED_ORIGINS',
     'None'
@@ -172,7 +174,11 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # 1. First priority: Look for the HttpOnly cookie (React Production/Dev)
+        'vehicle_fleet.authentication.CookieTokenAuthentication',
+        # 2. Second priority: Fallback to the standard Authorization header (Swagger UI)
         'rest_framework.authentication.TokenAuthentication',
+        # 3. Third priority: Fallback to session cookies (Django Admin panel & browsable API)
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -205,6 +211,7 @@ SPECTACULAR_SETTINGS = {
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # SECURE_SSL_REDIRECT = True
