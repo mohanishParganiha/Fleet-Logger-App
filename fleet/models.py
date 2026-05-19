@@ -1,6 +1,7 @@
 from django.db import models
 from vehicle_fleet import settings
 from simple_history.models import HistoricalRecords
+from uuid6 import uuid7
 
 STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 
@@ -9,6 +10,7 @@ STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 
 class Vehicle(models.Model):
     """Model for Vehicles."""
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     model = models.CharField(max_length=25, blank=True)
     registered_number = models.CharField(
         max_length=10, blank=False, unique=True)
@@ -26,6 +28,7 @@ class Vehicle(models.Model):
 
 class Driver(models.Model):
     """Model for Drives."""
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='driver_profile',
@@ -52,6 +55,7 @@ class Driver(models.Model):
 
 class TripLog(models.Model):
     """Models for logs."""
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     date_time = models.DateTimeField(blank=False, unique=False)
     date_created = models.DateTimeField(auto_now_add=True)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)

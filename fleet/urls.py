@@ -11,19 +11,19 @@ urlpatterns = [
     # user endpoints
     path('users/create/', CreateUser.as_view(), name='create-users'),
 
-    path('users/<int:pk>/', UpdateUser.as_view(), name='user-detail'),
+    path('users/<uuid:pk>/', UpdateUser.as_view(), name='user-detail'),
 
     # truck endpoints
     path(
         'vehicles/', views.VehicleListCreateView.as_view(), name='vehicle-list-create'),
     path(
-        'vehicles/<int:pk>/', views.VehicleDetailView.as_view(), name='vehicle-detail'),
+        'vehicles/<uuid:pk>/', views.VehicleDetailView.as_view(), name='vehicle-detail'),
 
     # driver endpoints
     path(
         'drivers/', views.DriverListCreateView.as_view(), name='driver-list-create'),
     path(
-        'drivers/<int:pk>/', views.DriverDetailView.as_view(), name='driver-detail'),
+        'drivers/<uuid:pk>/', views.DriverDetailView.as_view(), name='driver-detail'),
 
     # log endpoints
     path(
@@ -31,11 +31,11 @@ urlpatterns = [
     path(
         'trip-logs/calculate-bulk/', views.TripLogBulkCalculateView.as_view(), name='triplog-calculate-bulk'),
     path(
-        'trip-logs/<int:pk>/', views.TripLogDetailView.as_view(), name='triplog-detail'),
+        'trip-logs/<uuid:pk>/', views.TripLogDetailView.as_view(), name='triplog-detail'),
     path(
-        'trip-logs/<int:pk>/approve/', views.TripLogApproveView.as_view(), name='triplog-approve'
+        'trip-logs/<uuid:pk>/approve/', views.TripLogApproveView.as_view(), name='triplog-approve'
     ),
     path(
-        'trip-logs/<int:pk>/calculate/', views.TripLogCalculationView.as_view(), name='triplog-calculate'
+        'trip-logs/<uuid:pk>/calculate/', views.TripLogCalculationView.as_view(), name='triplog-calculate'
     )
 ]

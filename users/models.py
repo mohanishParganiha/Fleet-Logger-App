@@ -1,5 +1,5 @@
 from typing import Any
-
+from uuid6 import uuid7
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 # Create your models here.
@@ -24,6 +24,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     username = models.CharField(max_length=255, blank=False, null=False)
     email = models.EmailField(blank=False, null=False, unique=True)
     is_active = models.BooleanField(default=True)

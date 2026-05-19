@@ -6,3 +6,4 @@ gunicorn==23.0.0
 django-cors-headers==4.7.0
 drf_spectacular==0.29.0
 django-simple-history==3.11.0
+uuid6==2025.0.1
