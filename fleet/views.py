@@ -12,11 +12,13 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend  # type: ignore
 from .filters import TripLogFilter, VehicleFilter, DriverFilter
 from .permissions import IsManager
-# Create your views here.
 
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.serializers import Serializer, CharField
+import os
+from vehicle_fleet import settings
+# Create your views here.
 
 
 # Explicitly document the LoginView
@@ -70,9 +72,10 @@ class LoginView(APIView):
             response.set_cookie(
                 key='auth_token',
                 value=token.key,
-                httponly=True,
-                secure=True,
-                samesite='Lax',
+                httponly=settings.SESSION_COOKIE_HTTPONLY,
+                secure=settings.SESSION_COOKIE_SECURE,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+                domain=settings.SESSION_COOKIE_DOMAIN,
             )
             return response
         else:
@@ -124,9 +127,12 @@ class LogoutView(APIView):
             value='',
             max_age=0,          # Tells browser to delete the cookie instantly
             expires='Thu, 01 Jan 1970 00:00:00 GMT',  # Backwards compatibility
-            httponly=True,
-            secure=True,        # Must match your login view settings
-            samesite='Lax',     # Must match your login view settings
+            httponly=settings.SESSION_COOKIE_HTTPONLY,
+            # Must match your login view settings
+            secure=settings.SESSION_COOKIE_SECURE,
+            # Must match your login view settings
+            samesite=settings.SESSION_COOKIE_SAMESITE,
+            domain=settings.SESSION_COOKIE_DOMAIN,
         )
 
         return response

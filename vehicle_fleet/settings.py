@@ -209,14 +209,42 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
+
+SESSION_COOKIE_DOMAIN = os.environ.get(
+    'SESSION_COOKIE_DOMAIN', 'localhost')
+CSRF_COOKIE_DOMAIN = os.environ.get(
+    'CSRF_COOKIE_DOMAIN', 'localhost')
+
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # MUST be False so your frontend can read it
+
+# --- ENVIRONMENT SPECIFIC CONFIGURATION ---
 if not DEBUG:
+    # PRODUCTION (OCI + Cloudflare + Vercel)
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_HTTPONLY = True
+    X_FRAME_OPTIONS = "DENY"
+
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+    # Required for Cross-Origin requests between ://domain.com and ://domain.com
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
+
+    # (Uncomment these once your production SSL is fully tested and verified via Cloudflare)
     # SECURE_SSL_REDIRECT = True
     # SECURE_BROWSER_XSS_FILTER = True
     # SECURE_CONTENT_TYPE_NOSNIFF = True
     # SECURE_HSTS_SECONDS = 31536000
     # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     # SECURE_HSTS_PRELOAD = True
+else:
+    # LOCAL DEVELOPMENT (Docker / localhost)
+    # Turn off secure HTTPS requirements for local plain HTTP traffic
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+    # Use 'Lax' locally so your local frontend (e.g., port 3000) can receive
+    # cookies from your local backend container (e.g., port 8000) over HTTP
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"

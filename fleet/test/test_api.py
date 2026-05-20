@@ -7,8 +7,13 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 
 
+@override_settings(
+    SESSION_COOKIE_DOMAIN='api.testserver',
+    CSRF_COOKIE_DOMAIN='api.testserver'
+)
 class AuthenticationTest(APITestCase):
     def setUp(self) -> None:
         self.client = APIClient()
@@ -41,6 +46,7 @@ class AuthenticationTest(APITestCase):
         token = Token.objects.create(user=self.user)
 
         self.client.cookies['auth_token'] = token.key
+        self.client.cookies['auth_token']['domain'] = 'api.testserver'
 
         response = self.client.get('/api/drivers/')
 
@@ -51,6 +57,7 @@ class AuthenticationTest(APITestCase):
         token = Token.objects.create(user=self.user)
 
         self.client.cookies['auth_token'] = token.key
+        self.client.cookies['auth_token']['domain'] = 'api.testserver'
 
         response = self.client.post(
             '/api/logout/'
