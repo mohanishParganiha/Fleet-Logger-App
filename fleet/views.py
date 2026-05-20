@@ -37,7 +37,7 @@ from vehicle_fleet import settings
             name='Set-Cookie',
             type=str,
             location=OpenApiParameter.HEADER,  # Tells Swagger it is an HTTP Header
-            description="Contains auth_token=...; HttpOnly; Secure; SameSite=Lax",
+            description="Contains auth_token=...; HttpOnly; Secure; SameSite; domain;",
             response=True  # CRITICAL: Tells the system this is a RESPONSE header, not a request parameter
         )
     ],
