@@ -32,12 +32,13 @@ class Driver(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='driver_profile',
-        blank=True,
-        null=True,
-        help_text='link to user account if driver needs login access'
+        blank=False,
+        null=False
     )
     name = models.CharField(max_length=100, null=False,
                             blank=False, unique=False)
+    phone_number = models.CharField(
+        max_length=10, null=False, blank=False, unique=True)
     license_number = models.CharField(max_length=15, blank=False, unique=True)
     primary_vehicle = models.ForeignKey(
         Vehicle, null=True, blank=True, on_delete=models.SET_NULL)

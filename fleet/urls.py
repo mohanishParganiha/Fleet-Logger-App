@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from users.views import CreateUser, UpdateUser
+from users.views import UpdateUser
 urlpatterns = [
     # login endpoint
     path('login/', views.LoginView.as_view(), name='login'),
@@ -9,8 +9,6 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
 
     # user endpoints
-    path('users/create/', CreateUser.as_view(), name='create-users'),
-
     path('users/<uuid:pk>/', UpdateUser.as_view(), name='user-detail'),
 
     # truck endpoints

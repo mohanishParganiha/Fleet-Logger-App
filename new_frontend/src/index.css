@@ -1,0 +1,161 @@
+/* stylelint-disable at-rule-no-unknown */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* Use @import form to avoid tools that flag unknown @tailwind at-rules */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* ── Base ─────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate font-body text-ink text-sm;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display font-semibold text-ink;
+    letter-spacing: -0.01em;
+  }
+
+  input, select, textarea {
+    outline: none;
+  }
+
+  /* number/data values feel more technical */
+  td.num, .stat-value {
+    @apply font-mono;
+  }
+}
+
+/* ── Components ───────────────────────────────── */
+@layer components {
+
+  /* Card */
+  .card {
+    @apply bg-white rounded-lg border border-slate-border p-5;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded font-display font-medium text-sm
+           bg-blue text-white border border-blue
+           hover:bg-blue-dark hover:border-blue-dark
+           active:scale-[0.98]
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded font-display font-medium text-sm
+           bg-white text-ink-400 border border-slate-border
+           hover:bg-slate hover:text-ink hover:border-slate-border
+           active:scale-[0.98]
+           transition-all duration-150;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded font-display font-medium text-sm
+           bg-white text-rust border border-rust/30
+           hover:bg-rust-light hover:border-rust/40
+           active:scale-[0.98]
+           transition-all duration-150;
+  }
+
+  /* Form elements */
+  .input-field {
+    @apply w-full px-3 py-2 rounded border border-slate-border bg-white text-ink text-sm
+           placeholder:text-ink-300
+           focus:border-blue focus:ring-2 focus:ring-blue/10
+           transition-all duration-150;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-ink-400 mb-1 tracking-wide uppercase;
+  }
+
+  /* Table */
+  .table-row-hover {
+    @apply transition-colors duration-100 hover:bg-slate/70;
+  }
+
+  /* Badges */
+  .badge-active {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+           bg-blue-light text-blue-dark border border-blue-border;
+  }
+
+  .badge-inactive {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+           bg-slate-soft text-ink-400 border border-slate-border;
+  }
+
+  .badge-pending {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+           bg-amber-light text-amber border border-amber/20;
+  }
+
+  /* Page enter animation */
+  .page-enter {
+    animation: pageEnter 0.18s ease-out both;
+  }
+
+  @keyframes pageEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Sidebar nav active state (used in ManagerLayout) */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded text-sm font-body
+           text-ink-300 transition-colors duration-150
+           hover:bg-white/5 hover:text-white;
+  }
+
+  .nav-item-active {
+    @apply bg-blue/15 text-blue-light font-medium;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-slate-border my-4;
+  }
+
+  /* Empty state */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-14 text-center text-ink-300;
+  }
+
+  /* Loading pulse */
+  .skeleton {
+    @apply bg-slate-soft rounded animate-pulse;
+  }
+
+  /* Stat card used in DriverPages */
+  .stat-card {
+    @apply text-center bg-slate rounded-lg p-3;
+  }
+
+  .stat-label {
+    @apply text-xs text-ink-400 mb-0.5;
+  }
+
+  .stat-value {
+    @apply text-base font-semibold text-ink font-mono;
+  }
+}
+
+/* ── Scrollbar (webkit) ───────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { @apply bg-slate-border rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-ink-300; }

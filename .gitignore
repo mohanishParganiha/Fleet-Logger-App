@@ -217,4 +217,7 @@ docker-compose.yml
 new_frontend/Fleet-Logger-App-Frontend-Technical-Map.md
 
 # ignore graphify-out
-/graphify-out
+graphify-out/
+
+#node modules
+node_modules/

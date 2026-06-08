@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://api.mohanish.online/api/$1"
-    }
-  ]
-}
