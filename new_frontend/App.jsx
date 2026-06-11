@@ -11,7 +11,6 @@ import Vehicles from './pages/manager/Vehicles'
 import Drivers  from './pages/manager/Drivers'
 import Trips    from './pages/manager/Trips'
 import BulkCalc from './pages/manager/BulkCalc'
-import Users    from './pages/manager/Users'
 import { MyTrips, LogTrip } from './pages/driver/DriverPages'
 
 export default function App() {
@@ -36,7 +35,6 @@ export default function App() {
               <Route path="drivers"  element={<Drivers />} />
               <Route path="trips"    element={<Trips />} />
               <Route path="bulk"     element={<BulkCalc />} />
-              <Route path="users"    element={<Users />} />
             </Route>
 
             {/* Driver routes */}

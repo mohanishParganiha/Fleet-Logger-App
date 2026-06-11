@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLang } from '../../context/LangContext'
 import api from '../../hooks/useApi'
+import { createPortal } from 'react-dom'
 
 export default function Vehicles() {
   const { t } = useLang()
@@ -174,9 +175,9 @@ export default function Vehicles() {
 }
 
 function Modal({ title, onClose, children }) {
-  return (
-    <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+  const modalRoot = (
+    <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-lg w-full max-w-lg p-6 shadow-xl my-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-display text-lg font-bold tracking-wide uppercase text-ink">{title}</h3>
           <button onClick={onClose} className="text-ink-300 hover:text-ink text-xl leading-none">×</button>
@@ -184,5 +185,7 @@ function Modal({ title, onClose, children }) {
         {children}
       </div>
     </div>
-  )
+  );
+
+  return createPortal(modalRoot, document.body);
 }

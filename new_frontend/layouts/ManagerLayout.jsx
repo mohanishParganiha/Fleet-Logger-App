@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Truck, Users, ClipboardList, Calculator, Settings, LogOut } from 'lucide-react'
+import { Truck, Users, ClipboardList, Calculator, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import LangToggle from '../components/LangToggle'
@@ -10,7 +10,6 @@ const NAV = [
   { to: '/manager/drivers',  key: 'drivers',   Icon: Users },
   { to: '/manager/trips',    key: 'trips',      Icon: ClipboardList },
   { to: '/manager/bulk',     key: 'bulk_calc',  Icon: Calculator },
-  { to: '/manager/users',    key: 'users',      Icon: Settings },
 ]
 
 export default function ManagerLayout() {
@@ -27,10 +26,9 @@ export default function ManagerLayout() {
   return (
     <div className="flex min-h-screen bg-slate">
 
-      {/* Sidebar — white with border */}
+      {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-slate-border flex flex-col shrink-0">
 
-        {/* Brand — amber accent strip */}
         <div className="px-5 py-5 border-b border-slate-border">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber inline-block" />
