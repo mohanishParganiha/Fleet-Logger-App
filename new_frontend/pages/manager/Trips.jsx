@@ -22,22 +22,23 @@ export default function Trips() {
 
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm()
   const calcForm = useForm()
+  const userId = user?.id ?? user?.user_id
 
   // ── fetch logged-in user's driver profile ──
   useEffect(() => {
-    if (!user?.user_id) return
+    if (!userId) return
     setDriverLoading(true)
     // drivers list filtered by the linked user — backend returns driver linked to this user
-    api.get('/drivers/', { params: { user: user.user_id } })
+    api.get('/drivers/', { params: { user: userId } })
       .then(res => {
         const results = res.data.results || []
         // find driver whose user matches logged-in user id
-        const found = results.find(d => d.user?.id === user.user_id || d.user === user.user_id)
+        const found = results.find(d => d.user?.id === userId || d.user === userId) || results[0]
         setMyDriver(found || null)
       })
       .catch(() => setMyDriver(null))
       .finally(() => setDriverLoading(false))
-  }, [user])
+  }, [userId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -62,7 +63,7 @@ export default function Trips() {
 
     // 1. Find the actual database ID of your primary vehicle from the active vehicles array
     const primaryRegNum = myDriver?.primary_vehicle_detail?.registered_number || myDriver?.primary_vehicle || ''
-    const matchingVehicle = vehicles.find(v => v.registered_number === primaryRegNum)
+    const matchingVehicle = vehicles.find(v => String(v.id) === String(myDriver?.primary_vehicle) || v.registered_number === primaryRegNum)
     const primaryVehicleId = matchingVehicle ? matchingVehicle.id : ''
 
     // 2. Format the driver string
@@ -74,10 +75,12 @@ export default function Trips() {
       vehicle:           primaryVehicleId, // Sets the ID so the dropdown matches perfectly
       number_of_trips:   '',
       weight:            '',
+      volume:            '',
       distance_traveled: '',
       pick_up:           '',
       drop_off:          '',
       diesel_fill:       '',
+      last_reason_to_change: '',
     })
     setModal({ mode: 'add' })
   }
@@ -89,19 +92,25 @@ export default function Trips() {
     vehicle:           trip.vehicle?.id || '', // Changed from trip.vehicle?.registered_number
     number_of_trips:   trip.number_of_trips,
     weight:            trip.weight            || '',
+    volume:            trip.volume            || '',
     distance_traveled: trip.distance_traveled || '',
     pick_up:           trip.pick_up           || '',
     drop_off:          trip.drop_off          || '',
     diesel_fill:       trip.diesel_fill       || '',
+    last_reason_to_change: '',
   })
   setModal({ mode: 'edit', data: trip })
 }
 
   async function onSubmit(data, signatureDataUrl) {
     setApiError('')
+    if (!hasLoadMetric(data)) {
+      setApiError(t.weight_or_volume_required || 'Weight or volume is required.')
+      return
+    }
 
     // Find the real registration number based on the selected vehicle ID dropdown
-    const selectedVehicle = vehicles.find(v => v.id === data.vehicle)
+    const selectedVehicle = vehicles.find(v => String(v.id) === String(data.vehicle))
 
     const payload = {
       date_time:       data.date_time,
@@ -111,10 +120,12 @@ export default function Trips() {
 
     if (selectedVehicle)         payload.vehicle           = selectedVehicle.registered_number
     if (data.weight)            payload.weight            = data.weight
+    if (data.volume)            payload.volume            = data.volume
     if (data.distance_traveled) payload.distance_traveled = data.distance_traveled
     if (data.pick_up)           payload.pick_up           = data.pick_up
     if (data.drop_off)          payload.drop_off          = data.drop_off
     if (data.diesel_fill)       payload.diesel_fill       = data.diesel_fill
+    if (modal.mode === 'edit')  payload.last_reason_to_change = data.last_reason_to_change?.trim()
 
     try {
       if (modal.mode === 'add') {
@@ -183,21 +194,21 @@ export default function Trips() {
       {/* Filters */}
       <div className="card flex flex-wrap gap-3 items-end">
         <div>
-          <label className="label">From</label>
+          <label className="label">{t.start_date || 'From'}</label>
           <input type="date" className="input-field w-40" value={filters.start_date}
             onChange={e => setFilters(f => ({ ...f, start_date: e.target.value }))} />
         </div>
         <div>
-          <label className="label">To</label>
+          <label className="label">{t.end_date || 'To'}</label>
           <input type="date" className="input-field w-40" value={filters.end_date}
             onChange={e => setFilters(f => ({ ...f, end_date: e.target.value }))} />
         </div>
         <div>
-          <label className="label">Vehicle</label>
-          <input className="input-field w-36" placeholder="Reg no." value={filters.vehicle}
+          <label className="label">{t.vehicle || 'Vehicle'}</label>
+          <input className="input-field w-36" placeholder={t.reg_no_placeholder || 'Reg no.'} value={filters.vehicle}
             onChange={e => setFilters(f => ({ ...f, vehicle: e.target.value }))} />
         </div>
-        <button className="btn-secondary" onClick={() => setFilters({ start_date: '', end_date: '', vehicle: '' })}>Clear</button>
+        <button className="btn-secondary" onClick={() => setFilters({ start_date: '', end_date: '', vehicle: '' })}>{t.clear || 'Clear'}</button>
       </div>
 
       {/* Table */}
@@ -207,10 +218,10 @@ export default function Trips() {
         ) : trips.length === 0 ? (
           <p className="p-5 text-ink-400 font-body text-sm">{t.no_data}</p>
         ) : (
-          <table className="w-full text-sm font-body min-w-[900px]">
+          <table className="w-full text-sm font-body min-w-[980px]">
             <thead className="bg-slate border-b border-slate-border">
               <tr>
-                {['Date', 'Vehicle', 'Driver', 'Trips', 'Weight(T)', 'Dist(km)', 'Approved', t.actions].map(h => (
+                {[t.date, t.vehicle, t.driver, t.trip_count, t.weight_t, t.volume_ft, t.distance_km, t.approved, t.actions].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-display text-xs tracking-widest uppercase text-ink-400">{h}</th>
                 ))}
               </tr>
@@ -225,6 +236,7 @@ export default function Trips() {
                   <td className="px-4 py-3 text-ink-400">{tr.driver?.name || '—'}</td>
                   <td className="px-4 py-3 text-ink">{tr.number_of_trips}</td>
                   <td className="px-4 py-3 text-ink-400">{tr.weight            ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink-400">{tr.volume            ?? '—'}</td>
                   <td className="px-4 py-3 text-ink-400">{tr.distance_traveled ?? '—'}</td>
                   <td className="px-4 py-3">
                     {tr.is_approved
@@ -272,14 +284,14 @@ export default function Trips() {
         <Modal title="Calculate Rate" onClose={() => setCalcModal(null)}>
           <form onSubmit={calcForm.handleSubmit(onCalcSubmit)} className="space-y-4">
             <div>
-              <label className="label">Calc Type</label>
+              <label className="label">{t.calc_type || 'Calc Type'}</label>
               <select className="input-field" {...calcForm.register('calc_type')}>
-                <option value="weight">Weight</option>
-                <option value="distance">Distance</option>
+                <option value="weight">{t.weight_t || 'Weight (T)'}</option>
+                <option value="distance">{t.distance_km || 'Distance (km)'}</option>
               </select>
             </div>
             <div>
-              <label className="label">Rate (₹ per unit)</label>
+              <label className="label">{t.rate || 'Rate'} (₹ per unit)</label>
               <input type="number" step="0.01" className="input-field" placeholder="e.g. 500"
                 {...calcForm.register('rate', { required: true })} />
             </div>
@@ -322,7 +334,7 @@ function TripModal({ mode, trip, myDriver, vehicles, register, handleSubmit, err
 
       // 2. Find and set Primary Vehicle ID
       const primaryRegNum = myDriver?.primary_vehicle_detail?.registered_number || myDriver?.primary_vehicle || ''
-      const matchingVehicle = vehicles.find(v => v.registered_number === primaryRegNum)
+      const matchingVehicle = vehicles.find(v => String(v.id) === String(myDriver?.primary_vehicle) || v.registered_number === primaryRegNum)
       if (matchingVehicle) {
         setValue('vehicle', matchingVehicle.id)
       }
@@ -365,7 +377,7 @@ function TripModal({ mode, trip, myDriver, vehicles, register, handleSubmit, err
 
   function handleFormSubmit(data) {
     const canvas = canvasRef.current
-    const sigDataUrl = hasSig ? canvas.toDataURL('image/png') : null
+    const sigDataUrl = hasSig ? getOpaqueSignatureDataUrl(canvas) : null
     onSubmit(data, sigDataUrl)
   }
 
@@ -395,80 +407,119 @@ function TripModal({ mode, trip, myDriver, vehicles, register, handleSubmit, err
           <form id="trip-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
 
             <div>
-              <label className="label">Date & Time *</label>
+              <label className="label">{t.date_time || 'Date & Time'} *</label>
               <input type="datetime-local" className="input-field"
-                {...register('date_time', { required: 'Required' })} />
+                {...register('date_time', { required: t.required || 'Required' })} />
               {errors.date_time && <p className="text-rust text-xs mt-1">{errors.date_time.message}</p>}
             </div>
 
             {/* Driver — readOnly ensures it submits data while remaining un-editable */}
             <div>
-              <label className="label">Driver</label>
+              <label className="label">{t.driver || 'Driver'}</label>
               <input
                 type="text"
                 className="input-field bg-slate border-slate-border cursor-not-allowed text-ink-400 font-medium"
                 readOnly
                 {...register('driver')}
               />
-              <p className="text-xs text-ink-400 mt-1">Auto-filled from your profile.</p>
+              <p className="text-xs text-ink-400 mt-1">{t.auto_filled_profile || 'Auto-filled from your profile.'}</p>
             </div>
 
             {/* Vehicle — Dropdown autofills primary, but remains fully customizable */}
             <div>
-              <label className="label">Vehicle</label>
+              <label className="label">{t.vehicle || 'Vehicle'}</label>
               <select
               className="input-field"
               {...register('vehicle')}
             >
-              <option value="">— None —</option>
+              <option value="">— {t.none || 'None'} —</option>
               {vehicles.map(v => (
                 /* Change value from v.registered_number to v.id */
                 <option key={v.id} value={v.id}>
                   {v.registered_number}{v.model ? ` — ${v.model}` : ''}
-                  {v.registered_number === defaultVehicle ? ' (primary)' : ''}
+                  {v.registered_number === defaultVehicle ? ` (${t.primary || 'primary'})` : ''}
                 </option>
               ))}
             </select>
             </div>
 
             <div>
-              <label className="label">Number of Trips *</label>
+              <label className="label">{t.number_of_trips || 'Number of Trips'} *</label>
               <input type="number" min="1" className="input-field"
-                {...register('number_of_trips', { required: 'Required', min: { value: 1, message: 'Min 1' } })} />
+                {...register('number_of_trips', { required: t.required || 'Required', min: { value: 1, message: t.required_min_1 || 'Min 1' } })} />
               {errors.number_of_trips && <p className="text-rust text-xs mt-1">{errors.number_of_trips.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Weight (T)</label>
-                <input type="number" step="0.01" className="input-field" {...register('weight')} />
+                <label className="label">{t.weight_t || 'Weight (T)'}</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input-field"
+                  {...register('weight')}
+                />
               </div>
               <div>
-                <label className="label">Distance (km)</label>
-                <input type="number" step="0.01" className="input-field" {...register('distance_traveled')} />
+                <label className="label">{t.volume_ft || 'Volume (ft)'}</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input-field"
+                  {...register('volume')}
+                />
               </div>
+            </div>
+
+            <div>
+              <label className="label">{t.distance_km || 'Distance (km)'} *</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input-field"
+                {...register('distance_traveled', { required: t.required || 'Required' })}
+              />
+              {errors.distance_traveled && <p className="text-rust text-xs mt-1">{errors.distance_traveled.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Pick Up</label>
+                <label className="label">{t.pick_up || 'Pick Up'}</label>
                 <input className="input-field" {...register('pick_up')} />
               </div>
               <div>
-                <label className="label">Drop Off</label>
+                <label className="label">{t.drop_off || 'Drop Off'}</label>
                 <input className="input-field" {...register('drop_off')} />
               </div>
             </div>
 
             <div>
-              <label className="label">Diesel Fill (L)</label>
+              <label className="label">{t.diesel_fill_l || 'Diesel Fill (L)'}</label>
               <input type="number" step="0.01" className="input-field" {...register('diesel_fill')} />
             </div>
+
+            {mode === 'edit' && (
+              <div>
+                <label className="label">{t.reason_for_change || 'Reason for Change'} *</label>
+                <textarea
+                  rows={3}
+                  className="input-field resize-none"
+                  placeholder={t.reason_for_change_placeholder || 'Explain why this trip log is being updated'}
+                  {...register('last_reason_to_change', {
+                    required: mode === 'edit' ? (t.required || 'Required') : false,
+                    validate: value => mode !== 'edit' || Boolean(value?.trim()) || (t.required || 'Required'),
+                  })}
+                />
+                {errors.last_reason_to_change && (
+                  <p className="text-rust text-xs mt-1">{errors.last_reason_to_change.message}</p>
+                )}
+              </div>
+            )}
 
             {/* ── Signature Pad ── */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="label mb-0">Signature</label>
+                <label className="label mb-0">{t.signature || 'Signature'}</label>
                 <button
                   type="button"
                   onClick={clearSig}
@@ -536,4 +587,30 @@ function Modal({ title, onClose, children }) {
   );
 
   return createPortal(modalRoot, document.body);
+}
+
+function getPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect()
+  const touch = e.touches?.[0]
+  const clientX = touch ? touch.clientX : e.clientX
+  const clientY = touch ? touch.clientY : e.clientY
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height),
+  }
+}
+
+function getOpaqueSignatureDataUrl(canvas) {
+  const out = document.createElement('canvas')
+  out.width = canvas.width
+  out.height = canvas.height
+  const ctx = out.getContext('2d')
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(0, 0, out.width, out.height)
+  ctx.drawImage(canvas, 0, 0)
+  return out.toDataURL('image/png')
+}
+
+function hasLoadMetric(data) {
+  return String(data.weight ?? '').trim() !== '' || String(data.volume ?? '').trim() !== ''
 }

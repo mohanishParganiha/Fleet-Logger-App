@@ -81,13 +81,19 @@ class TripLogSerializer(serializers.ModelSerializer):
         queryset=Driver.objects.all(),
         slug_field='license_number'
     )
+
     driver_id = serializers.IntegerField(source='driver.id', read_only=True)
+
     driver_name = serializers.CharField(source='driver.name', read_only=True)
+
     number_of_trips = serializers.IntegerField(
         validators=[validate_negative_values])
 
     weight = serializers.DecimalField(
         max_digits=10, decimal_places=2, validators=[validate_negative_values], required=False)
+
+    volume = serializers.DecimalField(
+        max_digits=5, decimal_places=2, validators=[validate_negative_values], required=False)
 
     distance_traveled = serializers.DecimalField(
         max_digits=5, decimal_places=2, validators=[validate_negative_values], required=False)
@@ -96,6 +102,8 @@ class TripLogSerializer(serializers.ModelSerializer):
         max_digits=6, decimal_places=2, validators=[validate_negative_values], required=False)
 
     is_approved = serializers.BooleanField(read_only=True)
+
+    last_reason_to_change = serializers.CharField(required=False)
 
     class Meta:
         model = TripLog
@@ -106,6 +114,20 @@ class TripLogSerializer(serializers.ModelSerializer):
         if not request or not request.user:
             return attrs
         user = request.user
+
+        # check if the method is put/patch , then check if last_reason_to_change is set
+        if request.method in ['PUT', 'PATCH'] and not attrs.get('last_reason_to_change'):
+            raise serializers.ValidationError(
+                detail="You must give reason to update the trip logs",
+                code=status.HTTP_400_BAD_REQUEST
+            )
+
+        # check if weight or volume are present , both cannot be empty at once
+        if not attrs.get('weight') and not attrs.get('volume'):
+            raise serializers.ValidationError(
+                detail="Both Weight and Volume cannot be emtpy",
+                code=status.HTTP_400_BAD_REQUEST
+            )
 
         # Determine the driver instance for this log execution
         driver = attrs.get('driver') or (

@@ -59,11 +59,14 @@ class TripLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
     date_time = models.DateTimeField(blank=False, unique=False)
     date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     number_of_trips = models.IntegerField(blank=False)
     weight = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)
+    volume = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True)
     distance_traveled = models.DecimalField(
         max_digits=5, decimal_places=2, blank=True, null=True)
     pick_up = models.CharField(max_length=100, blank=True, null=True)
@@ -71,6 +74,8 @@ class TripLog(models.Model):
     diesel_fill = models.DecimalField(
         max_digits=6, decimal_places=2, blank=True, null=True)
     is_approved = models.BooleanField(default=False)
+
+    last_reason_to_change = models.TextField(blank=True)
 
     history = HistoricalRecords()
 

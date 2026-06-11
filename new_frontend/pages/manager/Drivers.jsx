@@ -60,7 +60,7 @@ export default function Drivers() {
     if (modal.mode === 'add') {
       // frontend password match validation
       if (data.user_password !== data.user_password2) {
-        setApiError('Passwords do not match.')
+        setApiError(t.passwords_do_not_match || 'Passwords do not match.')
         return
       }
 
@@ -147,7 +147,7 @@ export default function Drivers() {
             value={filters.status}
             onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
           >
-            <option value="">All</option>
+          <option value="">{t.all || 'All'}</option>
             <option value="active">{t.active}</option>
             <option value="inactive">{t.inactive}</option>
           </select>
@@ -156,13 +156,13 @@ export default function Drivers() {
           <label className="label">{t.name || 'Name'}</label>
           <input
             className="input-field w-44"
-            placeholder="Search name…"
+            placeholder={t.search_name || 'Search name…'}
             value={filters.name}
             onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
           />
         </div>
         <button className="btn-secondary" onClick={() => setFilters({ status: '', name: '' })}>
-          Clear
+          {t.clear || 'Clear'}
         </button>
       </div>
 
@@ -176,7 +176,7 @@ export default function Drivers() {
           <table className="w-full text-sm font-body">
             <thead className="bg-slate border-b border-slate-border">
               <tr>
-                {['Name', 'Phone', 'License', 'Primary Vehicle', t.status, t.actions].map(h => (
+                {[t.name, t.phone, t.license, t.primary_vehicle, t.status, t.actions].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-display text-xs tracking-widest uppercase text-ink-400">{h}</th>
                 ))}
               </tr>
@@ -213,29 +213,29 @@ export default function Drivers() {
 
             {/* ── Driver Info ── */}
             <p className="text-xs font-display uppercase tracking-widest text-ink-400 border-b border-slate-border pb-1">
-              Driver Info
+              {t.driver_info || 'Driver Info'}
             </p>
 
             <div>
-              <label className="label">Full Name *</label>
+              <label className="label">{t.full_name || 'Full Name'} *</label>
               <input className="input-field" placeholder="Ramesh Kumar"
-                {...register('name', { required: 'Required' })} />
+                {...register('name', { required: t.required || 'Required' })} />
               {errors.name && <p className="text-rust text-xs mt-1">{errors.name.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">License Number *</label>
+                <label className="label">{t.license_number || 'License Number'} *</label>
                 <input className="input-field" placeholder="MH0120230001234"
-                  {...register('license_number', { required: 'Required' })} />
+                  {...register('license_number', { required: t.required || 'Required' })} />
                 {errors.license_number && <p className="text-rust text-xs mt-1">{errors.license_number.message}</p>}
               </div>
               <div>
-                <label className="label">Phone Number *</label>
+                <label className="label">{t.phone_number || 'Phone Number'} *</label>
                 <input className="input-field" placeholder="9876543210"
                   {...register('phone_number', {
-                    required: 'Required',
-                    pattern: { value: /^\d{10}$/, message: 'Must be 10 digits' }
+                    required: t.required || 'Required',
+                    pattern: { value: /^\d{10}$/, message: t.must_be_10_digits || 'Must be 10 digits' }
                   })} />
                 {errors.phone_number && <p className="text-rust text-xs mt-1">{errors.phone_number.message}</p>}
               </div>
@@ -243,9 +243,9 @@ export default function Drivers() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Primary Vehicle (optional)</label>
+                <label className="label">{t.primary_vehicle_optional || 'Primary Vehicle (optional)'}</label>
                 <select className="input-field" {...register('primary_vehicle')}>
-                  <option value="">— None —</option>
+                  <option value="">— {t.none || 'None'} —</option>
                   {vehicles.map(v => (
                     <option key={v.id} value={v.id}>
                       {v.registered_number}{v.model ? ` — ${v.model}` : ''}
@@ -264,36 +264,36 @@ export default function Drivers() {
 
             {/* ── User Account ── */}
             <p className="text-xs font-display uppercase tracking-widest text-ink-400 border-b border-slate-border pb-1 mt-2">
-              Login Account
+              {t.login_account || 'Login Account'}
             </p>
 
             <div>
-              <label className="label">Email *</label>
+              <label className="label">{t.email} *</label>
               <input type="email" className="input-field" placeholder="driver@company.com"
-                {...register('user_email', { required: 'Required' })} />
+                {...register('user_email', { required: t.required || 'Required' })} />
               {errors.user_email && <p className="text-rust text-xs mt-1">{errors.user_email.message}</p>}
             </div>
 
             <div>
-              <label className="label">Username *</label>
+              <label className="label">{t.username || 'Username'} *</label>
               <input className="input-field" placeholder="ramesh_kumar"
-                {...register('user_username', { required: 'Required' })} />
+                {...register('user_username', { required: t.required || 'Required' })} />
               {errors.user_username && <p className="text-rust text-xs mt-1">{errors.user_username.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Password *</label>
-                <input type="password" className="input-field" placeholder="Min 8 chars"
-                  {...register('user_password', { required: 'Required', minLength: { value: 8, message: 'Min 8 chars' } })} />
+                <label className="label">{t.password} *</label>
+                <input type="password" className="input-field" placeholder={t.min_8_chars || 'Min 8 chars'}
+                  {...register('user_password', { required: t.required || 'Required', minLength: { value: 8, message: t.min_8_chars || 'Min 8 chars' } })} />
                 {errors.user_password && <p className="text-rust text-xs mt-1">{errors.user_password.message}</p>}
               </div>
               <div>
-                <label className="label">Confirm Password *</label>
-                <input type="password" className="input-field" placeholder="Repeat password"
+                <label className="label">{t.confirm_password || 'Confirm Password'} *</label>
+                <input type="password" className="input-field" placeholder={t.repeat_password || 'Repeat password'}
                   {...register('user_password2', {
-                    required: 'Required',
-                    validate: v => v === password || 'Passwords do not match'
+                    required: t.required || 'Required',
+                    validate: v => v === password || (t.passwords_do_not_match || 'Passwords do not match')
                   })} />
                 {errors.user_password2 && <p className="text-rust text-xs mt-1">{errors.user_password2.message}</p>}
               </div>
@@ -307,7 +307,7 @@ export default function Drivers() {
 
             <div className="flex gap-2 pt-2">
               <button type="submit" disabled={isSubmitting} className="btn-primary">
-                {isSubmitting ? 'Creating…' : 'Create Driver'}
+                {isSubmitting ? (t.creating || 'Creating…') : (t.create_driver || 'Create Driver')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => { setModal(null); setApiError('') }}>
                 {t.cancel}
@@ -323,36 +323,36 @@ export default function Drivers() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
             <div>
-              <label className="label">Full Name *</label>
-              <input className="input-field" {...register('name', { required: 'Required' })} />
+              <label className="label">{t.full_name || 'Full Name'} *</label>
+              <input className="input-field" {...register('name', { required: t.required || 'Required' })} />
               {errors.name && <p className="text-rust text-xs mt-1">{errors.name.message}</p>}
             </div>
 
             <div>
-              <label className="label">Phone Number *</label>
+              <label className="label">{t.phone_number || 'Phone Number'} *</label>
               <input className="input-field"
                 {...register('phone_number', {
-                  required: 'Required',
-                  pattern: { value: /^\d{10}$/, message: 'Must be 10 digits' }
+                  required: t.required || 'Required',
+                  pattern: { value: /^\d{10}$/, message: t.must_be_10_digits || 'Must be 10 digits' }
                 })} />
               {errors.phone_number && <p className="text-rust text-xs mt-1">{errors.phone_number.message}</p>}
             </div>
 
             {/* license shown but disabled — cannot change after creation */}
             <div>
-              <label className="label">License Number</label>
+              <label className="label">{t.license_number || 'License Number'}</label>
               <input
                 className="input-field bg-slate-soft cursor-not-allowed text-ink-400"
                 value={modal.data.license_number}
                 disabled
               />
-              <p className="text-xs text-ink-400 mt-1">License cannot be changed after creation.</p>
+              <p className="text-xs text-ink-400 mt-1">{t.license_locked || 'License cannot be changed after creation.'}</p>
             </div>
 
             <div>
-              <label className="label">Primary Vehicle</label>
+              <label className="label">{t.primary_vehicle || 'Primary Vehicle'}</label>
               <select className="input-field" {...register('primary_vehicle')}>
-                <option value="">— None —</option>
+                <option value="">— {t.none || 'None'} —</option>
                 {vehicles.map(v => (
                   <option key={v.id} value={v.id}>
                     {v.registered_number}{v.model ? ` — ${v.model}` : ''}
