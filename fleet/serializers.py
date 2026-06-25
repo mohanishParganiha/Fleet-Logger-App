@@ -82,24 +82,22 @@ class TripLogSerializer(serializers.ModelSerializer):
         slug_field='license_number'
     )
 
-    driver_id = serializers.IntegerField(source='driver.id', read_only=True)
-
     driver_name = serializers.CharField(source='driver.name', read_only=True)
 
     number_of_trips = serializers.IntegerField(
         validators=[validate_negative_values])
 
     weight = serializers.DecimalField(
-        max_digits=10, decimal_places=2, validators=[validate_negative_values], required=False)
+        max_digits=10, decimal_places=2, allow_null=True, validators=[validate_negative_values], required=False)
 
     volume = serializers.DecimalField(
-        max_digits=5, decimal_places=2, validators=[validate_negative_values], required=False)
+        max_digits=5, decimal_places=2, allow_null=True, validators=[validate_negative_values], required=False)
 
     distance_traveled = serializers.DecimalField(
-        max_digits=5, decimal_places=2, validators=[validate_negative_values], required=False)
+        max_digits=5, decimal_places=2, allow_null=True, validators=[validate_negative_values], required=False)
 
     diesel_fill = serializers.DecimalField(
-        max_digits=6, decimal_places=2, validators=[validate_negative_values], required=False)
+        max_digits=6, decimal_places=2, allow_null=True, validators=[validate_negative_values], required=False)
 
     is_approved = serializers.BooleanField(read_only=True)
 
@@ -123,7 +121,14 @@ class TripLogSerializer(serializers.ModelSerializer):
             )
 
         # check if weight or volume are present , both cannot be empty at once
-        if not attrs.get('weight') and not attrs.get('volume'):
+        if self.instance and request.method == 'PATCH':
+            weight = attrs.get('weight', self.instance.weight)
+            volume = attrs.get('volume', self.instance.volume)
+        else:
+            weight = attrs.get('weight')
+            volume = attrs.get('volume')
+
+        if not weight and not volume:
             raise serializers.ValidationError(
                 detail="Both Weight and Volume cannot be emtpy",
                 code=status.HTTP_400_BAD_REQUEST

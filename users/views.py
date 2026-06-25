@@ -15,5 +15,5 @@ class UpdateUser(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method == 'DELETE':
-            return [IsAdminUser]
+            return [IsAdminUser()]
         return [(IsManager | IsAdminUser)()]

@@ -100,7 +100,7 @@ DATABASES = {
         'NAME': os.environ.get('DB_NAME', 'fleet_db'),
         'USER': os.environ.get('DB_USER', 'fleet_user'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'fleetpass123'),
-        'HOST': os.environ.get('DB_HOST', '10.0.0.236'),
+        'HOST': os.environ.get('DB_HOST'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
