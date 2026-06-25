@@ -229,8 +229,8 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
 
     # Required for Cross-Origin requests between ://domain.com and ://domain.com
-    SESSION_COOKIE_SAMESITE = "None"
-    CSRF_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
 
     # (Uncomment these once your production SSL is fully tested and verified via Cloudflare)
     # SECURE_SSL_REDIRECT = True
