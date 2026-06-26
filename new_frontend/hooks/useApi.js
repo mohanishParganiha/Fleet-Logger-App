@@ -12,10 +12,23 @@ const api = axios.create({
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status
+
+    if (status === 401) {
       sessionStorage.removeItem('fleet_user')
       window.location.href = '/login'
+      return Promise.reject(err)
     }
+
+    if (status === 500) {
+      // Global server error — you could show a toast here later
+      console.error('Server error:', err.response?.data)
+    }
+
+    if (!err.response) {
+      console.error('Network error — server unreachable')
+    }
+
     return Promise.reject(err)
   }
 )

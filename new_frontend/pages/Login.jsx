@@ -15,24 +15,53 @@ export default function Login() {
 
   const { register, handleSubmit, formState: { errors } } = useForm()
 
+  // async function onSubmit(data) {
+  //   setLoading(true)
+  //   setError('')
+  //   try {
+  //     const res = await api.post('/login/', data)
+  //     login(res.data)
+  //     // Route based on role
+  //     if (res.data.is_staff || res.data.is_manager) {
+  //       navigate('/manager/vehicles')
+  //     } else {
+  //       navigate('/driver/trips')
+  //     }
+  //   } catch {
+  //     setError(t.invalid_creds)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
   async function onSubmit(data) {
     setLoading(true)
     setError('')
     try {
       const res = await api.post('/login/', data)
       login(res.data)
-      // Route based on role
       if (res.data.is_staff || res.data.is_manager) {
         navigate('/manager/vehicles')
       } else {
         navigate('/driver/trips')
       }
-    } catch {
-      setError(t.invalid_creds)
+    } catch (err) {
+      // Show the real error so you can debug properly
+      const status = err.response?.status
+      const detail = err.response?.data?.detail || err.response?.data?.error || err.message
+
+      if (status === 401 || status === 400) {
+        setError(t.invalid_creds)
+      } else if (status === 403) {
+        setError('Access denied. Check CSRF or CORS configuration.')
+      } else if (!err.response) {
+        setError('Network error — cannot reach server.')
+      } else {
+        setError(`Server error (${status}): ${detail}`)
+      }
     } finally {
       setLoading(false)
     }
-  }
+}
 
   return (
     <div className="min-h-screen bg-slate flex items-center justify-center p-4">
