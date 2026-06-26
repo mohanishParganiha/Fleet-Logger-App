@@ -3,6 +3,10 @@
     {
     "source": "/api/(.*)",
     "destination": "https://api.mohanish.online/api/$1"
+    },
+    {
+    "source": "/((?!api/).*)",
+    "destination": "/index.html"
     }
 ]
 }
