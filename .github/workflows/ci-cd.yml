@@ -95,8 +95,31 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/fleet-logger-app:latest
 
+      #Create the directory first so SCP has a destination and not crash
+      - name: Create deployment directory on OCI
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.OCI_INSTANCE_IP }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: mkdir -p /home/ubuntu/Fleet-Logger-App
+
+      # push some files onto server that are needed
+      - name: Push files to oci instance
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OCI_INSTANCE_IP }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          source: |
+            docker-compose-deploy.yml
+            gunicorn_config.py
+            nginx/
+          target: "/home/ubuntu/Fleet-Logger-App"
+
+      # deploy via SSH, then running commands scritp
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.1
         env:
           DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKER_TOKEN: ${{ secrets.DOCKER_HUB_PAT }}
@@ -107,10 +130,8 @@ jobs:
           envs: DOCKER_USER,DOCKER_TOKEN
           script: |
             cd /home/ubuntu/Fleet-Logger-App
-            git pull origin main
             echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
             docker compose -f docker-compose-deploy.yml pull
-            docker compose -f docker-compose-deploy.yml down
             docker compose -f docker-compose-deploy.yml up -d --remove-orphans
             docker compose -f docker-compose-deploy.yml exec -T web python manage.py migrate
-            docker image prune -f
+            docker image prune -af
