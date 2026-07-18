@@ -3,7 +3,7 @@ services:
 
   web:
     build: .
-    command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py
+    command: gunicorn config.wsgi:application -c gunicorn_config.py
     volumes:
       - .:/app
       - static_volume:/app/staticfiles

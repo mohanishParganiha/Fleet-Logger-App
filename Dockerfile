@@ -21,4 +21,4 @@ RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8000
 
-CMD [ "gunicorn","vehicle_fleet.wsgi:application" , "-c", "gunicorn_config.py"]
+CMD [ "gunicorn","config.wsgi:application" , "-c", "gunicorn_config.py"]

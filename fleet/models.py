@@ -1,5 +1,5 @@
 from django.db import models
-from vehicle_fleet import settings
+from config import settings
 from simple_history.models import HistoricalRecords
 from uuid6 import uuid7
 

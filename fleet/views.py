@@ -17,7 +17,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.serializers import Serializer, CharField
 import os
-from vehicle_fleet import settings
+from config import settings
 # Create your views here.
 
 

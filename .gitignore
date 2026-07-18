@@ -221,3 +221,13 @@ graphify-out/
 
 #node modules
 node_modules/
+
+#agents.md
+Agents.md
+
+#opencode folder
+.opencode
+.opencode/
+
+#repomix
+repomix-output.xml

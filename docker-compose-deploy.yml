@@ -3,7 +3,7 @@ services:
   web:
     build: .
     image: ${IMAGE_PATH}
-    command: gunicorn vehicle_fleet.wsgi:application -c gunicorn_config.py --workers 2 --threads 2 --worker-tmp-dir /dev/shm
+    command: gunicorn config.wsgi:application -c gunicorn_config.py --workers 2 --threads 2 --worker-tmp-dir /dev/shm
     restart: always
     volumes:
       - static_volume:/app/staticfiles

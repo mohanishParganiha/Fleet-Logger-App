@@ -36,7 +36,7 @@ Plaintext
 .
 ├── fleet/               # Main API Application (Django)
 ├── users/               # User Authentication & Profiles (Email-based)
-├── vehicle_fleet/       # Project Configuration & Settings
+├── config/       # Project Configuration & Settings
 ├── new_frontend/        # Decoupled JS Dashboard (Vercel)
 ├── nginx/               # Nginx Reverse Proxy Configs
 ├── docker-compose.yml   # Orchestration (App + Nginx)
