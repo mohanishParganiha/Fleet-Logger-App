@@ -1,0 +1,10 @@
+node_modules/
+.git/
+*.log
+.env
+dist/
+coverage/
+.coverage
+new_frontend/
+**/*.pyc
+**/__pycache__/
