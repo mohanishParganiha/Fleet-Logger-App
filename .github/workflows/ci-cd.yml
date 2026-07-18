@@ -114,7 +114,7 @@ jobs:
           source: |
             docker-compose-deploy.yml
             gunicorn_config.py
-            nginx/
+            nginx/*
           target: "/home/ubuntu/Fleet-Logger-App"
 
       # deploy via SSH, then running commands scritp
