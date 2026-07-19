@@ -112,7 +112,7 @@ jobs:
           username: ${{ secrets.OCI_USER }}
           key: ${{ secrets.OCI_SSH_KEY }}
           source: |
-            nginx/*
+            nginx
             docker-compose-deploy.yml*
             gunicorn_config.py*
           target: "/home/ubuntu/Fleet-Logger-App"
