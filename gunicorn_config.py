@@ -6,6 +6,7 @@ import os
 bind = "0.0.0.0:8000"
 
 # workers
+# change these , based on server capabilities
 workers = multiprocessing.cpu_count()*2+1
 worker_class = "sync"
 worker_connections = 1000
