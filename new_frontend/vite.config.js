@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/v1': {
-        target: 'http://localhost',
+        target: 'http://api.mohanish.online',
         changeOrigin: true,
         secure: true,
         credentials: true,
