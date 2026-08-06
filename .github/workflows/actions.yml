@@ -1,5 +1,7 @@
 name: CI/CD Pipeline
-
+# need to change the paths ignore logic
+# intended action : run CICD pipeline when backend source code is pushed, do not run when frontend or readme files are pushed
+# issue: it does not run when both source code files and frontend files or readme files together.
 on:
   push:
     branches: [ "main"]
