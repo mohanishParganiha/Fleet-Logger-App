@@ -1,12 +1,12 @@
 {
-"rewrites": [
+  "rewrites": [
     {
-    "source": "/api/(.*)",
-    "destination": "https://api.mohanish.online/api/$1"
+      "source": "/api/v1/(.*)",
+      "destination": "http://localhost/api/v1/$1"
     },
     {
-    "source": "/((?!api/).*)",
-    "destination": "/index.html"
+      "source": "/((?!api/v1/).*)",
+      "destination": "/index.html"
     }
-]
+  ]
 }

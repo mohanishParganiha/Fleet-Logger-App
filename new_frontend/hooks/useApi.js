@@ -3,7 +3,7 @@ import axios from 'axios'
 // withCredentials = true tells axios to send HttpOnly cookies on every request
 // No token in headers needed — browser handles the cookie automatically
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })

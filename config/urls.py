@@ -18,12 +18,24 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import permissions
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from config.views import HealthCheckView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('fleet.urls')),
-    path('api/schema/', SpectacularAPIView.as_view(
+
+    # API v1
+    path('api/v1/', include('fleet.urls_v1')),
+    path('api/v1/', include('users.urls_v1')),
+
+    # Schema & docs per version
+    path('api/schema/v1/', SpectacularAPIView.as_view(
+        api_version='v1',
         permission_classes=[permissions.AllowAny]
-    ), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[permissions.AllowAny]),
-         name='swagger-ui')
+    ), name='schema-v1'),
+    path('api/docs/v1/', SpectacularSwaggerView.as_view(
+        url_name='schema-v1', permission_classes=[permissions.AllowAny]
+    ), name='swagger-v1'),
+
+    # Health check (unversioned - for infra monitoring)
+    path('health/', HealthCheckView.as_view(), name='health-check'),
 ]

@@ -27,13 +27,10 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # TESTING = 'test' in sys.argv or 'pytest' in sys.argv
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', None)
 
 if not SECRET_KEY:
     if not DEBUG:
-        raise ValueError("SECRET_KEY must be set in production!")
-    else:
-        # Allow tests/dev to run without SECRET_KEY in .env
         SECRET_KEY = 'p)lc1=1&8cq%9vz-sa4#*^57iq2s(m%)xwmsyq1v077c#+b=2^'
 
 ALLOWED_HOSTS = os.environ.get(
@@ -188,6 +185,10 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+    'DEFAULT_VERSION': 'v1',
+    'ALLOWED_VERSIONS': ['v1'],
+    'VERSION_PARAM': 'version',
 
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -208,6 +209,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Automated interactive API documentation',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
 }
 
 

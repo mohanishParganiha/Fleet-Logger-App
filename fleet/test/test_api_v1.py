@@ -1,5 +1,5 @@
 """
-API / integration tests for the fleet app.
+API / integration tests for the fleet app (v1).
 
 PHILOSOPHY:
   Each test follows the AAA pattern:
@@ -22,6 +22,8 @@ COVERAGE MAP:
   DriverAPITest           – CRUD, permissions, nested-user creation
   TripLogAPITest          – CRUD, approval flow, time-window guard, calculation endpoints
   UserAPITest             – retrieve/update/delete via /api/users/<uuid>/
+
+All endpoints are versioned under /api/v1/.
 """
 
 from datetime import timedelta
@@ -64,15 +66,18 @@ def make_driver(user, license_number="DL00001", phone_number="9000000001",
 
 
 def make_trip(vehicle, driver, number_of_trips=5,
-              weight="1000.00", distance="100.00", days_ago=0):
-    return TripLog.objects.create(
-        vehicle=vehicle,
-        driver=driver,
-        date_time=timezone.now() - timedelta(days=days_ago),
-        number_of_trips=number_of_trips,
-        weight=Decimal(weight),
-        distance_traveled=Decimal(distance),
-    )
+              weight="1000.00", distance="100.00", volume=None, days_ago=0):
+    data = {
+        'vehicle': vehicle,
+        'driver': driver,
+        'date_time': timezone.now() - timedelta(days=days_ago),
+        'number_of_trips': number_of_trips,
+        'weight': Decimal(weight),
+        'distance_traveled': Decimal(distance),
+    }
+    if volume is not None:
+        data['volume'] = Decimal(volume)
+    return TripLog.objects.create(**data)
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +85,7 @@ def make_trip(vehicle, driver, number_of_trips=5,
 # ---------------------------------------------------------------------------
 
 class AuthenticationTest(APITestCase):
-    """Tests the /api/login/ and /api/logout/ endpoints."""
+    """Tests the /api/v1/login/ and /api/v1/logout/ endpoints."""
 
     def setUp(self):
         self.client = APIClient()
@@ -90,7 +95,7 @@ class AuthenticationTest(APITestCase):
 
     def test_login_with_valid_credentials_returns_200(self):
         response = self.client.post(
-            "/api/login/",
+            "/api/v1/login/",
             {"email": "auth@test.com", "password": "TestPass123"},
             format="json",
         )
@@ -98,7 +103,7 @@ class AuthenticationTest(APITestCase):
 
     def test_login_sets_httponly_cookie(self):
         response = self.client.post(
-            "/api/login/",
+            "/api/v1/login/",
             {"email": "auth@test.com", "password": "TestPass123"},
             format="json",
         )
@@ -107,7 +112,7 @@ class AuthenticationTest(APITestCase):
 
     def test_login_returns_user_metadata(self):
         response = self.client.post(
-            "/api/login/",
+            "/api/v1/login/",
             {"email": "auth@test.com", "password": "TestPass123"},
             format="json",
         )
@@ -119,7 +124,7 @@ class AuthenticationTest(APITestCase):
 
     def test_login_with_wrong_password_returns_401(self):
         response = self.client.post(
-            "/api/login/",
+            "/api/v1/login/",
             {"email": "auth@test.com", "password": "WrongPassword"},
             format="json",
         )
@@ -127,7 +132,7 @@ class AuthenticationTest(APITestCase):
 
     def test_login_with_missing_fields_returns_400(self):
         response = self.client.post(
-            "/api/login/", {"email": "auth@test.com"}, format="json")
+            "/api/v1/login/", {"email": "auth@test.com"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- cookie-based auth ---
@@ -136,11 +141,11 @@ class AuthenticationTest(APITestCase):
         """Simulates what the browser does: sends cookie on subsequent requests."""
         token = Token.objects.create(user=self.user)
         self.client.cookies["auth_token"] = token.key
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get("/api/v1/vehicles/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_protected_endpoint_rejects_request_without_auth(self):
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get("/api/v1/vehicles/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     # --- logout ---
@@ -148,25 +153,25 @@ class AuthenticationTest(APITestCase):
     def test_logout_returns_200(self):
         token = Token.objects.create(user=self.user)
         self.client.cookies["auth_token"] = token.key
-        response = self.client.post("/api/logout/")
+        response = self.client.post("/api/v1/logout/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_logout_deletes_token_from_database(self):
         token = Token.objects.create(user=self.user)
         self.client.cookies["auth_token"] = token.key
-        self.client.post("/api/logout/")
+        self.client.post("/api/v1/logout/")
         self.assertFalse(Token.objects.filter(key=token.key).exists())
 
     def test_logout_clears_cookie(self):
         token = Token.objects.create(user=self.user)
         self.client.cookies["auth_token"] = token.key
-        response = self.client.post("/api/logout/")
+        response = self.client.post("/api/v1/logout/")
         self.assertEqual(response.cookies["auth_token"].value, "")
         self.assertEqual(response.cookies["auth_token"]["max-age"], 0)
 
     def test_logout_requires_authentication(self):
         """Unauthenticated users cannot hit the logout endpoint."""
-        response = self.client.post("/api/logout/")
+        response = self.client.post("/api/v1/logout/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
@@ -190,26 +195,26 @@ class VehicleAPITest(APITestCase):
     # --- list ---
 
     def test_list_requires_authentication(self):
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get("/api/v1/vehicles/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_returns_200_for_authenticated_user(self):
         self.auth(self.regular)
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get("/api/v1/vehicles/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_is_paginated(self):
         for i in range(11):
             make_vehicle(f"CG07XY{i+10:04d}")
         self.auth(self.regular)
-        response = self.client.get("/api/vehicles/")
+        response = self.client.get("/api/v1/vehicles/")
         self.assertEqual(len(response.data["results"]), 10)
         self.assertIn("next", response.data)
 
     def test_filter_by_status_inactive(self):
         make_vehicle("CG07ZZINAC", status="inactive")
         self.auth(self.regular)
-        response = self.client.get("/api/vehicles/?status=inactive")
+        response = self.client.get("/api/v1/vehicles/?status=inactive")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             all(v["status"] == "inactive" for v in response.data["results"]))
@@ -217,18 +222,51 @@ class VehicleAPITest(APITestCase):
     def test_filter_by_registered_number(self):
         self.auth(self.regular)
         response = self.client.get(
-            "/api/vehicles/?registered_number=CG07XY0001")
+            f"/api/v1/vehicles/?registered_number=CG07XY0001")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"]
                          [0]["registered_number"], "CG07XY0001")
+
+    def test_pagination_first_page(self):
+        """Test pagination with page parameter."""
+        for i in range(15):
+            make_vehicle(f"PAGE{i+10:04d}")
+        self.auth(self.regular)
+        response = self.client.get("/api/v1/vehicles/?page=1")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 10)
+        self.assertIn("count", response.data)
+        self.assertEqual(response.data["count"], 16)
+
+    def test_pagination_last_page(self):
+        """Test pagination on last page."""
+        for i in range(13):
+            make_vehicle(f"PAGEX{i+10:04d}")
+        self.auth(self.regular)
+        response = self.client.get("/api/v1/vehicles/?page=2")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 4)
+        self.assertIn("count", response.data)
+        self.assertEqual(response.data["count"], 14)
+
+    def test_pagination_page_size(self):
+        """Test custom page size."""
+        for i in range(20):
+            make_vehicle(f"PAGEX{i+10:04d}")
+        self.auth(self.regular)
+        response = self.client.get("/api/v1/vehicles/?page=1")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 10)
+        self.assertIn("count", response.data)
+        self.assertEqual(response.data["count"], 21)
 
     # --- create ---
 
     def test_create_as_admin_returns_201(self):
         self.auth(self.admin)
         response = self.client.post(
-            "/api/vehicles/",
+            "/api/v1/vehicles/",
             {"model": "Tata Ace", "registered_number": "NEWVEH001", "status": "active"},
             format="json",
         )
@@ -239,7 +277,7 @@ class VehicleAPITest(APITestCase):
     def test_create_as_manager_returns_201(self):
         self.auth(self.manager)
         response = self.client.post(
-            "/api/vehicles/",
+            "/api/v1/vehicles/",
             {"model": "Tata Ace", "registered_number": "NEWVEH002", "status": "active"},
             format="json",
         )
@@ -248,7 +286,7 @@ class VehicleAPITest(APITestCase):
     def test_create_as_regular_user_returns_403(self):
         self.auth(self.regular)
         response = self.client.post(
-            "/api/vehicles/",
+            "/api/v1/vehicles/",
             {"model": "Tata Ace", "registered_number": "NEWVEH003", "status": "active"},
             format="json",
         )
@@ -256,7 +294,7 @@ class VehicleAPITest(APITestCase):
 
     def test_create_unauthenticated_returns_401(self):
         response = self.client.post(
-            "/api/vehicles/",
+            "/api/v1/vehicles/",
             {"model": "Tata Ace", "registered_number": "NEWVEH004", "status": "active"},
             format="json",
         )
@@ -265,7 +303,7 @@ class VehicleAPITest(APITestCase):
     def test_create_with_duplicate_registered_number_returns_400(self):
         self.auth(self.admin)
         response = self.client.post(
-            "/api/vehicles/",
+            "/api/v1/vehicles/",
             {"model": "Tata Ace", "registered_number": "CG07XY0001"},   # already exists
             format="json",
         )
@@ -276,7 +314,7 @@ class VehicleAPITest(APITestCase):
     def test_update_as_manager_returns_200(self):
         self.auth(self.manager)
         response = self.client.patch(
-            f"/api/vehicles/{self.vehicle.id}/",
+            f"/api/v1/vehicles/{self.vehicle.id}/",
             {"status": "inactive"},
             format="json",
         )
@@ -287,7 +325,7 @@ class VehicleAPITest(APITestCase):
     def test_update_as_regular_user_returns_403(self):
         self.auth(self.regular)
         response = self.client.patch(
-            f"/api/vehicles/{self.vehicle.id}/",
+            f"/api/v1/vehicles/{self.vehicle.id}/",
             {"status": "inactive"},
             format="json",
         )
@@ -297,17 +335,17 @@ class VehicleAPITest(APITestCase):
 
     def test_delete_as_admin_returns_204(self):
         self.auth(self.admin)
-        response = self.client.delete(f"/api/vehicles/{self.vehicle.id}/")
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Vehicle.objects.filter(id=self.vehicle.id).exists())
 
     def test_delete_as_manager_returns_403(self):
         self.auth(self.manager)
-        response = self.client.delete(f"/api/vehicles/{self.vehicle.id}/")
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_detail_unauthenticated_returns_401(self):
-        response = self.client.get(f"/api/vehicles/{self.vehicle.id}/")
+        response = self.client.get(f"/api/v1/vehicles/{self.vehicle.id}/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
@@ -351,12 +389,12 @@ class DriverAPITest(APITestCase):
     # --- list ---
 
     def test_list_requires_authentication(self):
-        response = self.client.get("/api/drivers/")
+        response = self.client.get("/api/v1/drivers/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_returns_200_for_authenticated_user(self):
         self.auth(self.regular)
-        response = self.client.get("/api/drivers/")
+        response = self.client.get("/api/v1/drivers/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # --- create ---
@@ -364,7 +402,7 @@ class DriverAPITest(APITestCase):
     def test_create_as_manager_returns_201(self):
         self.auth(self.manager)
         response = self.client.post(
-            "/api/drivers/", self._create_driver_payload(), format="json"
+            "/api/v1/drivers/", self._create_driver_payload(), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -374,13 +412,13 @@ class DriverAPITest(APITestCase):
         payload = self._create_driver_payload(
             email="linked@d.com", username="linked_user", license="DL8888888888888", phone="9100008888"
         )
-        self.client.post("/api/drivers/", payload, format="json")
+        self.client.post("/api/v1/drivers/", payload, format="json")
         self.assertTrue(User.objects.filter(email="linked@d.com").exists())
 
     def test_create_as_admin_returns_201(self):
         self.auth(self.admin)
         response = self.client.post(
-            "/api/drivers/",
+            "/api/v1/drivers/",
             self._create_driver_payload(
                 email="admin_created@d.com", username="admin_drv",
                 license="DL7777777777777", phone="9100007777"
@@ -392,7 +430,7 @@ class DriverAPITest(APITestCase):
     def test_create_as_regular_user_returns_403(self):
         self.auth(self.regular)
         response = self.client.post(
-            "/api/drivers/", self._create_driver_payload(), format="json"
+            "/api/v1/drivers/", self._create_driver_payload(), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -403,7 +441,7 @@ class DriverAPITest(APITestCase):
             license="DL1111111111111",   # duplicate
             phone="9100006666"
         )
-        response = self.client.post("/api/drivers/", payload, format="json")
+        response = self.client.post("/api/v1/drivers/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- update ---
@@ -411,7 +449,7 @@ class DriverAPITest(APITestCase):
     def test_update_as_manager_returns_200(self):
         self.auth(self.manager)
         response = self.client.patch(
-            f"/api/drivers/{self.driver.id}/",
+            f"/api/v1/drivers/{self.driver.id}/",
             {"status": "inactive"},
             format="json",
         )
@@ -422,7 +460,7 @@ class DriverAPITest(APITestCase):
     def test_update_as_regular_user_returns_403(self):
         self.auth(self.regular)
         response = self.client.patch(
-            f"/api/drivers/{self.driver.id}/",
+            f"/api/v1/drivers/{self.driver.id}/",
             {"status": "inactive"},
             format="json",
         )
@@ -432,13 +470,13 @@ class DriverAPITest(APITestCase):
 
     def test_delete_as_admin_returns_204(self):
         self.auth(self.admin)
-        response = self.client.delete(f"/api/drivers/{self.driver.id}/")
+        response = self.client.delete(f"/api/v1/drivers/{self.driver.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Driver.objects.filter(id=self.driver.id).exists())
 
     def test_delete_as_manager_returns_403(self):
         self.auth(self.manager)
-        response = self.client.delete(f"/api/drivers/{self.driver.id}/")
+        response = self.client.delete(f"/api/v1/drivers/{self.driver.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
@@ -485,12 +523,12 @@ class TripLogAPITest(APITestCase):
     # --- list ---
 
     def test_list_requires_authentication(self):
-        response = self.client.get("/api/trip-logs/")
+        response = self.client.get("/api/v1/trip-logs/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_returns_200_and_nested_vehicle_for_authenticated_user(self):
         self.auth(self.regular)
-        response = self.client.get("/api/trip-logs/")
+        response = self.client.get("/api/v1/trip-logs/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # to_representation nests the vehicle object — verify the structure
         result = response.data["results"][0]
@@ -507,7 +545,7 @@ class TripLogAPITest(APITestCase):
         make_trip(other_vehicle, other_driver)
 
         self.auth(self.regular)
-        response = self.client.get("/api/trip-logs/?vehicle=FILTERVEH1")
+        response = self.client.get("/api/v1/trip-logs/?vehicle=FILTERVEH1")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(
@@ -519,24 +557,71 @@ class TripLogAPITest(APITestCase):
         self.auth(self.regular)
         today = timezone.now().date().isoformat()
         response = self.client.get(
-            f"/api/trip-logs/?start_date={today}&end_date={today}")
+            f"/api/v1/trip-logs/?start_date={today}&end_date={today}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Only today's trip should appear
         self.assertEqual(len(response.data["results"]), 1)
+
+    def test_list_filter_combined_vehicle_and_date_and_status(self):
+        """Combined filters: vehicle + date range + is_approved status."""
+        # Create trips with different vehicles, dates, approval statuses
+        other_vehicle = make_vehicle("COMBOVEH1")
+        other_driver_user = make_user("combo@t.com", "combo_t")
+        other_driver = make_driver(
+            other_driver_user, license_number="DL4444444444444",
+            phone_number="9200000010", primary_vehicle=other_vehicle
+        )
+        # Trip 1: other_vehicle, 5 days ago, approved
+        t1 = make_trip(other_vehicle, other_driver, days_ago=5)
+        t1.is_approved = True
+        t1.save()
+        # Trip 2: other_vehicle, today, not approved
+        make_trip(other_vehicle, other_driver, days_ago=0)
+        # Trip 3: self.vehicle, today, approved
+        t3 = make_trip(self.vehicle, self.driver, days_ago=0)
+        t3.is_approved = True
+        t3.save()
+
+        self.auth(self.regular)
+        today = timezone.now().date().isoformat()
+        # Filter: other_vehicle + today + not approved
+        response = self.client.get(
+            f"/api/v1/trip-logs/?vehicle=COMBOVEH1&start_date={today}&end_date={today}&status=false")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(
+            response.data["results"][0]["vehicle"]["registered_number"], "COMBOVEH1")
+        self.assertFalse(response.data["results"][0]["is_approved"])
+
+    def test_list_filter_by_driver_license_number(self):
+        """Filter trip logs by driver license number."""
+        other_driver_user = make_user("driver2@t.com", "driver2_t")
+        other_driver = make_driver(
+            other_driver_user, license_number="DL5555555555555",
+            phone_number="9200000011", primary_vehicle=self.vehicle
+        )
+        make_trip(self.vehicle, other_driver)
+
+        self.auth(self.regular)
+        response = self.client.get(f"/api/v1/trip-logs/?driver=DL5555555555555")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(
+            response.data["results"][0]["driver"]["license_number"], "DL5555555555555")
 
     # --- create ---
 
     def test_create_as_authenticated_user_returns_201(self):
         self.auth(self.regular)
         response = self.client.post(
-            "/api/trip-logs/", self._create_trip_payload(), format="json"
+            "/api/v1/trip-logs/", self._create_trip_payload(), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(TripLog.objects.count(), 2)
 
     def test_create_unauthenticated_returns_401(self):
         response = self.client.post(
-            "/api/trip-logs/", self._create_trip_payload(), format="json"
+            "/api/v1/trip-logs/", self._create_trip_payload(), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -549,14 +634,30 @@ class TripLogAPITest(APITestCase):
             "number_of_trips": 3,
             # no weight, no volume
         }
-        response = self.client.post("/api/trip-logs/", payload, format="json")
+        response = self.client.post("/api/v1/trip-logs/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_with_volume_only_returns_201(self):
+        """Serializer accepts volume without weight (weight OR volume required)."""
+        self.auth(self.regular)
+        payload = {
+            "driver": self.driver.license_number,
+            "date_time": timezone.now().isoformat(),
+            "number_of_trips": 3,
+            "volume": "5.00",
+            # no weight
+        }
+        response = self.client.post("/api/v1/trip-logs/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        trip = TripLog.objects.get(id=response.data["id"])
+        self.assertEqual(trip.volume, Decimal("5.00"))
+        self.assertIsNone(trip.weight)
 
     def test_create_without_vehicle_defaults_to_driver_primary_vehicle(self):
         """When no vehicle is sent, the serializer should fall back to driver.primary_vehicle."""
         self.auth(self.regular)
         response = self.client.post(
-            "/api/trip-logs/", self._create_trip_payload(), format="json"
+            "/api/v1/trip-logs/", self._create_trip_payload(), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         trip_id = response.data["id"]
@@ -568,7 +669,7 @@ class TripLogAPITest(APITestCase):
         override_vehicle = make_vehicle("RIDE001")
         self.auth(self.manager)
         response = self.client.post(
-            "/api/trip-logs/",
+            "/api/v1/trip-logs/",
             self._create_trip_payload(vehicle_number="RIDE001"),
             format="json",
         )
@@ -580,7 +681,7 @@ class TripLogAPITest(APITestCase):
 
     def test_detail_returns_nested_driver_and_vehicle(self):
         self.auth(self.regular)
-        response = self.client.get(f"/api/trip-logs/{self.trip.id}/")
+        response = self.client.get(f"/api/v1/trip-logs/{self.trip.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data["driver"], dict)
         self.assertIsInstance(response.data["vehicle"], dict)
@@ -590,7 +691,7 @@ class TripLogAPITest(APITestCase):
     def test_update_as_manager_with_reason_returns_200(self):
         self.auth(self.manager)
         response = self.client.patch(
-            f"/api/trip-logs/{self.trip.id}/",
+            f"/api/v1/trip-logs/{self.trip.id}/",
             {"number_of_trips": 9, "last_reason_to_change": "Correcting entry error"},
             format="json",
         )
@@ -602,7 +703,7 @@ class TripLogAPITest(APITestCase):
         """Serializer rejects any PUT/PATCH that lacks last_reason_to_change."""
         self.auth(self.manager)
         response = self.client.patch(
-            f"/api/trip-logs/{self.trip.id}/",
+            f"/api/v1/trip-logs/{self.trip.id}/",
             {"number_of_trips": 9},   # no reason provided
             format="json",
         )
@@ -616,7 +717,7 @@ class TripLogAPITest(APITestCase):
         """
         self.auth(self.driver_user)
         response = self.client.patch(
-            f"/api/trip-logs/{self.trip.id}/",
+            f"/api/v1/trip-logs/{self.trip.id}/",
             {
                 "number_of_trips": 7,
                 "last_reason_to_change": "Fixing count",
@@ -637,12 +738,42 @@ class TripLogAPITest(APITestCase):
         self.auth(self.driver_user)
         # Patch timezone.now in the serializers module where it is actually called
         future_time = timezone.now() + timedelta(hours=3)
-        with patch("fleet.serializers.timezone.now", return_value=future_time):
+        with patch("fleet.serializers_v1.triplog.timezone.now", return_value=future_time):
             response = self.client.patch(
-                f"/api/trip-logs/{self.trip.id}/",
+                f"/api/v1/trip-logs/{self.trip.id}/",
                 {
                     "number_of_trips": 7,
                     "last_reason_to_change": "Too late",
+                },
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_driver_can_update_trip_within_2_hours(self):
+        """Driver CAN update a trip created 1 hour 59 minutes ago (within 2-hour window)."""
+        self.auth(self.driver_user)
+        future_time = timezone.now() + timedelta(hours=1, minutes=59)
+        with patch("fleet.serializers_v1.triplog.timezone.now", return_value=future_time):
+            response = self.client.patch(
+                f"/api/v1/trip-logs/{self.trip.id}/",
+                {
+                    "number_of_trips": 7,
+                    "last_reason_to_change": "Within window",
+                },
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_driver_cannot_update_trip_at_exactly_2_hours(self):
+        """Driver CANNOT update a trip created exactly 2 hours ago (boundary is exclusive)."""
+        self.auth(self.driver_user)
+        future_time = timezone.now() + timedelta(hours=2)
+        with patch("fleet.serializers_v1.triplog.timezone.now", return_value=future_time):
+            response = self.client.patch(
+                f"/api/v1/trip-logs/{self.trip.id}/",
+                {
+                    "number_of_trips": 7,
+                    "last_reason_to_change": "At boundary",
                 },
                 format="json",
             )
@@ -656,7 +787,7 @@ class TripLogAPITest(APITestCase):
 
         self.auth(self.driver_user)
         response = self.client.patch(
-            f"/api/trip-logs/{self.trip.id}/",
+            f"/api/v1/trip-logs/{self.trip.id}/",
             {
                 "number_of_trips": 7,
                 "last_reason_to_change": "Should not work",
@@ -669,49 +800,49 @@ class TripLogAPITest(APITestCase):
 
     def test_approve_as_admin_returns_200_and_locks_trip(self):
         self.auth(self.admin)
-        response = self.client.post(f"/api/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.trip.refresh_from_db()
         self.assertTrue(self.trip.is_approved)
 
     def test_approve_as_manager_returns_200(self):
         self.auth(self.manager)
-        response = self.client.post(f"/api/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_approve_already_approved_trip_returns_400(self):
         """Approving twice should be rejected to prevent redundant DB writes."""
         self.auth(self.admin)
         # first approve
-        self.client.post(f"/api/trip-logs/{self.trip.id}/approve/")
+        self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/approve/")   # second
+            f"/api/v1/trip-logs/{self.trip.id}/approve/")   # second
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
 
     def test_approve_as_regular_user_returns_403(self):
         self.auth(self.regular)
-        response = self.client.post(f"/api/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_approve_nonexistent_trip_returns_404(self):
         self.auth(self.admin)
         import uuid
         fake_id = uuid.uuid4()
-        response = self.client.post(f"/api/trip-logs/{fake_id}/approve/")
+        response = self.client.post(f"/api/v1/trip-logs/{fake_id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # --- delete ---
 
     def test_delete_as_admin_returns_204(self):
         self.auth(self.admin)
-        response = self.client.delete(f"/api/trip-logs/{self.trip.id}/")
+        response = self.client.delete(f"/api/v1/trip-logs/{self.trip.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(TripLog.objects.filter(id=self.trip.id).exists())
 
     def test_delete_as_regular_user_returns_403(self):
         self.auth(self.regular)
-        response = self.client.delete(f"/api/trip-logs/{self.trip.id}/")
+        response = self.client.delete(f"/api/v1/trip-logs/{self.trip.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # --- single-trip calculation ---
@@ -720,7 +851,7 @@ class TripLogAPITest(APITestCase):
         # amount = number_of_trips * weight * rate = 5 * 1000 * 10.50 = 52500
         self.auth(self.manager)
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/calculate/",
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
             {"rate": "10.50", "calc_type": "weight"},
             format="json",
         )
@@ -732,7 +863,7 @@ class TripLogAPITest(APITestCase):
         # amount = 5 * 100 * 2 = 1000
         self.auth(self.manager)
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/calculate/",
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
             {"rate": "2", "calc_type": "distance"},
             format="json",
         )
@@ -740,11 +871,26 @@ class TripLogAPITest(APITestCase):
         expected = float(Decimal("100.00") * 5 * Decimal("2"))
         self.assertAlmostEqual(response.data["amount"], expected, places=2)
 
+    def test_calculate_volume_as_manager_returns_correct_amount(self):
+        # Add volume to the existing trip
+        self.trip.volume = Decimal("10.00")
+        self.trip.save()
+        # amount = 5 * 10 * 5 = 250
+        self.auth(self.manager)
+        response = self.client.post(
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
+            {"rate": "5", "calc_type": "volume"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = float(Decimal("10.00") * 5 * Decimal("5"))
+        self.assertAlmostEqual(response.data["amount"], expected, places=2)
+
     def test_calculate_with_invalid_calc_type_returns_400(self):
         self.auth(self.manager)
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/calculate/",
-            {"rate": "10", "calc_type": "volume"},   # invalid
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
+            {"rate": "10", "calc_type": "invalid_type"},   # invalid
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -753,7 +899,7 @@ class TripLogAPITest(APITestCase):
     def test_calculate_with_missing_rate_returns_400(self):
         self.auth(self.manager)
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/calculate/",
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
             {"calc_type": "weight"},   # no rate
             format="json",
         )
@@ -762,7 +908,7 @@ class TripLogAPITest(APITestCase):
     def test_calculate_requires_manager_or_admin(self):
         self.auth(self.regular)
         response = self.client.post(
-            f"/api/trip-logs/{self.trip.id}/calculate/",
+            f"/api/v1/trip-logs/{self.trip.id}/calculate/",
             {"rate": "10", "calc_type": "weight"},
             format="json",
         )
@@ -777,7 +923,7 @@ class TripLogAPITest(APITestCase):
         self.auth(self.manager)
         today = timezone.now().date().isoformat()
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {
                 "start_date": today,
                 "end_date": today,
@@ -803,7 +949,7 @@ class TripLogAPITest(APITestCase):
         self.auth(self.manager)
         today = timezone.now().date().isoformat()
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {
                 "start_date": today,
                 "end_date": today,
@@ -819,10 +965,88 @@ class TripLogAPITest(APITestCase):
         # total_weight should only reflect TRIPVEH001 trips
         self.assertLess(response.data["total_weight"], 9999.0)
 
+    def test_bulk_calculate_volume_as_manager_returns_correct_total(self):
+        """Test bulk calculation with volume calc_type."""
+        make_trip(self.vehicle, self.driver,
+                  number_of_trips=3, volume="20.00")
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "10",
+                "calc_type": "volume",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("total_amount", response.data)
+        self.assertIn("total_volume", response.data)
+        self.assertGreater(response.data["total_amount"], 0)
+        self.assertEqual(response.data["calc_type"], "volume")
+
+    def test_bulk_calculate_distance_as_manager_returns_correct_total(self):
+        """Test bulk calculation with distance calc_type."""
+        make_trip(self.vehicle, self.driver,
+                  number_of_trips=4, distance="50.00")
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "3",
+                "calc_type": "distance",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("total_amount", response.data)
+        self.assertIn("total_distance", response.data)
+        self.assertGreater(response.data["total_amount"], 0)
+        self.assertEqual(response.data["calc_type"], "distance")
+
+    def test_bulk_calculate_invalid_calc_type_returns_400(self):
+        """Test bulk calculation with invalid calc_type."""
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "5",
+                "calc_type": "invalid_calc_type",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+    def test_bulk_calculate_rate_too_small_returns_400(self):
+        """Test bulk calculation with rate < 1."""
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "0.5",
+                "calc_type": "weight",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
     def test_bulk_calculate_with_invalid_date_format_returns_400(self):
         self.auth(self.manager)
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {
                 "start_date": "01-01-2025",   # wrong format
                 "end_date": "2025-01-10",
@@ -837,7 +1061,7 @@ class TripLogAPITest(APITestCase):
     def test_bulk_calculate_with_start_after_end_returns_400(self):
         self.auth(self.manager)
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {
                 "start_date": "2025-12-01",
                 "end_date": "2025-01-01",   # start > end
@@ -852,7 +1076,7 @@ class TripLogAPITest(APITestCase):
         self.auth(self.regular)
         today = timezone.now().date().isoformat()
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {"start_date": today, "end_date": today,
                 "rate": "5", "calc_type": "weight"},
             format="json",
@@ -863,7 +1087,7 @@ class TripLogAPITest(APITestCase):
         self.auth(self.manager)
         today = timezone.now().date().isoformat()
         response = self.client.post(
-            "/api/trip-logs/calculate-bulk/",
+            "/api/v1/trip-logs/calculate-bulk/",
             {
                 "start_date": today,
                 "end_date": today,
@@ -875,17 +1099,49 @@ class TripLogAPITest(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_bulk_calculate_volume_with_nonexistent_vehicle_returns_404(self):
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "5",
+                "calc_type": "volume",
+                "vehicle": "GHOST999",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_bulk_calculate_distance_with_nonexistent_vehicle_returns_404(self):
+        self.auth(self.manager)
+        today = timezone.now().date().isoformat()
+        response = self.client.post(
+            "/api/v1/trip-logs/calculate-bulk/",
+            {
+                "start_date": today,
+                "end_date": today,
+                "rate": "5",
+                "calc_type": "distance",
+                "vehicle": "GHOST999",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 # ---------------------------------------------------------------------------
-# User (via /api/users/<uuid:pk>/)
+# User (via /api/v1/users/<uuid:pk>/)
 # ---------------------------------------------------------------------------
 
 class UserAPITest(APITestCase):
     """
     Tests for UpdateUser view (RetrieveUpdateDestroyAPIView).
-    Endpoint: /api/users/<uuid>/
+    Endpoint: /api/v1/users/<uuid>/
 
-    NOTE: There is no /api/users/create/ endpoint.
+    NOTE: There is no /api/v1/users/create/ endpoint.
     User creation happens via the nested payload in DriverSerializer.
     """
 
@@ -903,22 +1159,22 @@ class UserAPITest(APITestCase):
 
     def test_admin_can_retrieve_any_user(self):
         self.auth(self.admin)
-        response = self.client.get(f"/api/users/{self.regular.id}/")
+        response = self.client.get(f"/api/v1/users/{self.regular.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["email"], self.regular.email)
 
     def test_manager_can_retrieve_any_user(self):
         self.auth(self.manager)
-        response = self.client.get(f"/api/users/{self.regular.id}/")
+        response = self.client.get(f"/api/v1/users/{self.regular.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_regular_user_cannot_retrieve_other_users(self):
         self.auth(self.regular)
-        response = self.client.get(f"/api/users/{self.admin.id}/")
+        response = self.client.get(f"/api/v1/users/{self.admin.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_unauthenticated_cannot_retrieve_user(self):
-        response = self.client.get(f"/api/users/{self.regular.id}/")
+        response = self.client.get(f"/api/v1/users/{self.regular.id}/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     # --- update ---
@@ -926,7 +1182,7 @@ class UserAPITest(APITestCase):
     def test_admin_can_update_user(self):
         self.auth(self.admin)
         response = self.client.patch(
-            f"/api/users/{self.regular.id}/",
+            f"/api/v1/users/{self.regular.id}/",
             {"username": "updated_name"},
             format="json",
         )
@@ -937,7 +1193,7 @@ class UserAPITest(APITestCase):
     def test_manager_can_update_user(self):
         self.auth(self.manager)
         response = self.client.patch(
-            f"/api/users/{self.regular.id}/",
+            f"/api/v1/users/{self.regular.id}/",
             {"username": "manager_updated"},
             format="json",
         )
@@ -946,7 +1202,7 @@ class UserAPITest(APITestCase):
     def test_regular_user_cannot_update_users(self):
         self.auth(self.regular)
         response = self.client.patch(
-            f"/api/users/{self.regular.id}/",
+            f"/api/v1/users/{self.regular.id}/",
             {"username": "self_update"},
             format="json",
         )
@@ -957,6 +1213,24 @@ class UserAPITest(APITestCase):
     def test_admin_can_delete_user(self):
         target = make_user("delete_me@u.com", "delete_me_u")
         self.auth(self.admin)
-        response = self.client.delete(f"/api/users/{target.id}/")
+        response = self.client.delete(f"/api/v1/users/{target.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(id=target.id).exists())
+
+    def test_manager_can_delete_user(self):
+        target = make_user("delete_by_manager@u.com", "delete_manager_u")
+        self.auth(self.manager)
+        response = self.client.delete(f"/api/v1/users/{target.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=target.id).exists())
+
+    def test_regular_user_cannot_delete_users(self):
+        target = make_user("no_delete@u.com", "no_delete_u")
+        self.auth(self.regular)
+        response = self.client.delete(f"/api/v1/users/{target.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_cannot_delete_user(self):
+        target = make_user("no_auth_delete@u.com", "no_auth_delete_u")
+        response = self.client.delete(f"/api/v1/users/{target.id}/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -1,65 +1,10 @@
 from rest_framework import serializers, status
-from .models import Vehicle, Driver, TripLog
 from django.utils import timezone
 from datetime import timedelta
-from django.db import transaction
-from users.serializers import RegisterSerializer
-
-
-# simple login serializer
-
-class LoginRequestSerializer(serializers.Serializer):
-    email = serializers.CharField(required=True)
-    password = serializers.CharField(required=True, write_only=True)
-
-
-class LoginResponseSerializer(serializers.Serializer):
-    email = serializers.CharField()
-    user_id = serializers.CharField()
-    is_staff = serializers.BooleanField()
-    is_manager = serializers.BooleanField()
-
-
-# simple Vehicle serializer
-
-class VehicleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Vehicle
-        fields = '__all__'
-
-
-class DriverSerializer(serializers.ModelSerializer):
-    # required=True ensures user account details must be provided during creation
-    user = RegisterSerializer(required=True)
-
-    class Meta:
-        model = Driver
-        fields = [
-            'id',
-            'user',
-            'name',
-            'phone_number',
-            'license_number',
-            'primary_vehicle',
-            'status',
-            'date_created',
-            'date_updated'
-        ]
-        read_only_fields = ['id', 'date_created', 'date_updated']
-
-    def create(self, validated_data):
-        # 1. Extract the clean, pre-validated user dictionary data
-        user_data = validated_data.pop('user')
-
-        with transaction.atomic():
-            # 2. Call the RegisterSerializer explicitly to handle the password hashing
-            user_serializer = RegisterSerializer()
-            user = user_serializer.create(validated_data=user_data)
-
-            # 3. Create the driver with the completed user instance
-            driver = Driver.objects.create(user=user, **validated_data)
-
-        return driver
+from decimal import Decimal
+from fleet.models import Vehicle, Driver, TripLog
+from fleet.serializers_v1.vehicle import VehicleSerializer
+from fleet.serializers_v1.driver import DriverSerializer
 
 
 def validate_negative_values(value):
@@ -67,6 +12,19 @@ def validate_negative_values(value):
         raise serializers.ValidationError(
             'value must be greater than equal to 0')
     return value
+
+
+class TripCalculationInputSerializer(serializers.Serializer):
+    rate = serializers.DecimalField(max_digits=10, decimal_places=2)
+    calc_type = serializers.CharField()
+
+
+class BulkCalculationInputSerializer(serializers.Serializer):
+    start_date = serializers.CharField()
+    end_date = serializers.CharField()
+    rate = serializers.DecimalField(max_digits=10, decimal_places=2)
+    calc_type = serializers.CharField()
+    vehicle = serializers.CharField(required=False)
 
 
 class TripLogSerializer(serializers.ModelSerializer):
@@ -160,11 +118,11 @@ class TripLogSerializer(serializers.ModelSerializer):
                     code=status.HTTP_400_BAD_REQUEST
                 )
 
-            # second check , check for tiem window of 2hrs
+            # second check , check for time window of 2hrs
             time_elapsed = timezone.now() - instance.date_created
-            if time_elapsed > timedelta(seconds=1.0):
+            if time_elapsed > timedelta(hours=2):
                 raise serializers.ValidationError(
-                    detail="More than 2 hours has passed , cannot make any changes. Contact Manager/Admin",
+                    detail="More than 2 hours has passed, cannot make any changes. Contact Manager/Admin",
                     code=status.HTTP_400_BAD_REQUEST
                 )
 

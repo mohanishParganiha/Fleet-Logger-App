@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://api.mohanish.online',
+      '/api/v1': {
+        target: 'http://localhost',
         changeOrigin: true,
         secure: true,
         credentials: true,

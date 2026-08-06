@@ -5,6 +5,16 @@ from uuid6 import uuid7
 
 STATUS_CHOICES = [('active', 'Active'), ('inactive', 'Inactive')]
 
+
+class TripLogQuerySet(models.QuerySet):
+    def with_relations(self):
+        return self.select_related('vehicle', 'driver', 'driver__primary_vehicle')
+
+
+class TripLogManager(models.Manager.from_queryset(TripLogQuerySet)):
+    pass
+
+
 # Create your models here.
 
 
@@ -78,6 +88,8 @@ class TripLog(models.Model):
     last_reason_to_change = models.TextField(blank=True)
 
     history = HistoricalRecords()
+
+    objects = TripLogManager()
 
     class Meta:
         ordering = ['-date_time']
