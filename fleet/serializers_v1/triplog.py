@@ -1,10 +1,7 @@
 from rest_framework import serializers, status
 from django.utils import timezone
 from datetime import timedelta
-from decimal import Decimal
-from fleet.models import Vehicle, Driver, TripLog
-from fleet.serializers_v1.vehicle import VehicleSerializer
-from fleet.serializers_v1.driver import DriverSerializer
+from fleet.models import Vehicle, TripLog
 
 
 def validate_negative_values(value):
@@ -36,8 +33,8 @@ class TripLogSerializer(serializers.ModelSerializer):
     )
 
     driver = serializers.SlugRelatedField(
-        queryset=Driver.objects.all(),
-        slug_field='license_number'
+        slug_field='license_number',
+        read_only=True
     )
 
     driver_name = serializers.CharField(source='driver.name', read_only=True)
@@ -135,17 +132,21 @@ class TripLogSerializer(serializers.ModelSerializer):
         return attrs
 
     def to_representation(self, instance):
-        """Outputs rich nested structures back to the frontend for form loading/view"""
         data = super().to_representation(instance)
 
         vehicle_obj = instance.vehicle
-        if not vehicle_obj or not instance.driver or not getattr(instance.driver, 'primary_vehicle', None):
-            vehicle_obj = instance.driver.primary_vehicle
+        if not vehicle_obj and instance.driver:
+            vehicle_obj = getattr(instance.driver, 'primary_vehicle', None)
 
-        data['vehicle'] = VehicleSerializer(
-            vehicle_obj, context=self.context).data if vehicle_obj else None
-        data['driver'] = DriverSerializer(
-            instance.driver, context=self.context).data if instance.driver else None
+        data['vehicle'] = {
+            'id': vehicle_obj.id,
+            'registered_number': vehicle_obj.registered_number
+        } if vehicle_obj else None
+
+        data['driver'] = {
+            'id': instance.driver.id,
+            'license_number': instance.driver.license_number
+        } if instance.driver else None
 
         data.pop('vehicle_id', None)
         data.pop('driver_id', None)

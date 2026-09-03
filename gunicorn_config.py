@@ -7,7 +7,8 @@ bind = "0.0.0.0:8000"
 
 # workers
 # change these , based on server capabilities
-workers = multiprocessing.cpu_count()*2+1
+# workers = multiprocessing.cpu_count()*2+1
+workers = 2
 worker_class = "sync"
 worker_connections = 1000
 timeout = 30
@@ -28,6 +29,9 @@ mask = 0
 user = None
 group = None
 tmp_upload_dir = None
+
+# only in dev, remove in prod
+# reload = True
 
 # ssl well add later
 # keyfile = None

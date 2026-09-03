@@ -46,7 +46,7 @@ class Driver(models.Model):
         null=False
     )
     name = models.CharField(max_length=100, null=False,
-                            blank=False, unique=False)
+                            blank=False)
     phone_number = models.CharField(
         max_length=10, null=False, blank=False, unique=True)
     license_number = models.CharField(max_length=15, blank=False, unique=True)
@@ -67,11 +67,11 @@ class Driver(models.Model):
 class TripLog(models.Model):
     """Models for logs."""
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
-    date_time = models.DateTimeField(blank=False, unique=False)
+    date_time = models.DateTimeField(blank=False)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.DO_NOTHING)
+    driver = models.ForeignKey(Driver, on_delete=models.DO_NOTHING)
     number_of_trips = models.IntegerField(blank=False)
     weight = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)

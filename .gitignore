@@ -213,8 +213,6 @@ aws_key/
 #docker compose override file for local dev only
 docker-compose.yml
 
-#ignore frontend md file
-new_frontend/Fleet-Logger-App-Frontend-Technical-Map.md
 
 # ignore graphify-out
 graphify-out/
@@ -226,11 +224,45 @@ node_modules/
 Agents.md
 
 #opencode folder
-.opencode
+# Ignore .opencode node_modules, package.json, package-lock.json, bun.lock (handled in .opencode/.gitignore)
+# But keep our pipeline assets committed
 .opencode/
-
+.opencode/node_modules
+.opencode/package.json
+.opencode/package-lock.json
+.opencode/bun.lock
+.opencode/skills-lock.json
+opencode.json
 #repomix
 repomix-output.xml
 
 #app schema
 FLEET-LOGGER-API.yaml
+
+#requirements and design doc
+FLEET-LOGGER-REQUIREMENTS.md
+
+#design doc
+FLEET-LOGGER-DESIGN.md
+
+#issues
+issues/
+
+#backup
+backup/
+
+#frontend
+fleet-logger-frontend/
+.playwright-mcp/
+
+#design-specs
+design-specs
+
+# management commands
+management
+
+#staticfiles
+staticfiles
+
+#entrypoint
+docker-entrypoint.sh

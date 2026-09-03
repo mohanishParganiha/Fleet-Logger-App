@@ -407,7 +407,7 @@ class DriverAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_also_creates_user_account(self):
-        """DriverSerializer.create() must create both a Driver and a User atomically."""
+        """DriverCreateSerializer.create() must create both a Driver and a User atomically."""
         self.auth(self.manager)
         payload = self._create_driver_payload(
             email="linked@d.com", username="linked_user", license="DL8888888888888", phone="9100008888"
@@ -603,7 +603,8 @@ class TripLogAPITest(APITestCase):
         make_trip(self.vehicle, other_driver)
 
         self.auth(self.regular)
-        response = self.client.get(f"/api/v1/trip-logs/?driver=DL5555555555555")
+        response = self.client.get(
+            f"/api/v1/trip-logs/?driver=DL5555555555555")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(
@@ -634,7 +635,8 @@ class TripLogAPITest(APITestCase):
             "number_of_trips": 3,
             # no weight, no volume
         }
-        response = self.client.post("/api/v1/trip-logs/", payload, format="json")
+        response = self.client.post(
+            "/api/v1/trip-logs/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_with_volume_only_returns_201(self):
@@ -647,7 +649,8 @@ class TripLogAPITest(APITestCase):
             "volume": "5.00",
             # no weight
         }
-        response = self.client.post("/api/v1/trip-logs/", payload, format="json")
+        response = self.client.post(
+            "/api/v1/trip-logs/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         trip = TripLog.objects.get(id=response.data["id"])
         self.assertEqual(trip.volume, Decimal("5.00"))
@@ -800,14 +803,16 @@ class TripLogAPITest(APITestCase):
 
     def test_approve_as_admin_returns_200_and_locks_trip(self):
         self.auth(self.admin)
-        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(
+            f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.trip.refresh_from_db()
         self.assertTrue(self.trip.is_approved)
 
     def test_approve_as_manager_returns_200(self):
         self.auth(self.manager)
-        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(
+            f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_approve_already_approved_trip_returns_400(self):
@@ -822,7 +827,8 @@ class TripLogAPITest(APITestCase):
 
     def test_approve_as_regular_user_returns_403(self):
         self.auth(self.regular)
-        response = self.client.post(f"/api/v1/trip-logs/{self.trip.id}/approve/")
+        response = self.client.post(
+            f"/api/v1/trip-logs/{self.trip.id}/approve/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_approve_nonexistent_trip_returns_404(self):
@@ -1142,7 +1148,7 @@ class UserAPITest(APITestCase):
     Endpoint: /api/v1/users/<uuid>/
 
     NOTE: There is no /api/v1/users/create/ endpoint.
-    User creation happens via the nested payload in DriverSerializer.
+    User creation happens via the nested payload in DriverCreateSerializer.
     """
 
     def setUp(self):
