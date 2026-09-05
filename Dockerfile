@@ -13,13 +13,8 @@ RUN apt-get update  && apt-get install  -y \
 
 COPY requirements.txt requirements-dev.txt /app/
 
-ARG BUILD_ENV=production
-
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt \
-    && if [ "$BUILD_ENV" = "development" ]; then \
-        pip install --no-cache-dir -r requirements-dev.txt; \
-        fi
+    pip install -r requirements.txt
 
 COPY . /app
 
