@@ -2,9 +2,9 @@ from django.urls import path
 from fleet.views_v1 import (
     LoginView, LogoutView,
     VehicleListCreateView, VehicleDetailView,
-    DriverListCreateView, DriverDetailView,
+    DriverListCreateView, DriverDetailView, DriverMeView,
     TripLogListCreateView, TripLogDetailView,
-    TripLogApproveView, TripLogCalculationView, TripLogBulkCalculateView
+    TripLogApproveView, TripLogCalculationView, TripLogBulkCalculateView,
 )
 
 urlpatterns = [
@@ -25,6 +25,8 @@ urlpatterns = [
         'drivers/', DriverListCreateView.as_view(), name='driver-list-create'),
     path(
         'drivers/<uuid:pk>/', DriverDetailView.as_view(), name='driver-detail'),
+    path(
+        'drivers/me', DriverMeView.as_view(), name='driver-me-detail'),
 
     # log endpoints
     path(

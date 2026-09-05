@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.exceptions import NotFound
 
 from fleet.models import TripLog
 from fleet.serializers_v1 import (
@@ -24,14 +25,50 @@ class TripLogListCreateView(generics.ListCreateAPIView):
     filterset_class = TripLogFilter
 
     def get_queryset(self):
-        return TripLog.objects.with_relations()
+
+        user = self.request.user
+
+        if user.is_staff or user.is_manager:  # type: ignore
+            return TripLog.objects.with_relations()  # type: ignore
+
+        if not hasattr(user, 'driver_profile'):
+            raise NotFound(
+                {"detail": "Your user account is not associated with a valid Driver profile."}
+            )
+
+        # remember to add .with_relations() after filter() to avoid N+1.
+        return TripLog.objects.filter(
+            driver=user.driver_profile).with_relations()  # type: ignore
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not hasattr(user, 'driver_profile'):
+            raise NotFound(
+                {"detail": "Your user account is not associated with a valid Driver profile."}
+            )
+
+        serializer.save(driver=user.driver_profile)  # type: ignore
 
 
 class TripLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TripLogSerializer
 
     def get_queryset(self):
-        return TripLog.objects.with_relations()
+
+        user = self.request.user
+
+        if user.is_staff or user.is_manager:  # type: ignore
+            return TripLog.objects.with_relations()  # type: ignore
+
+        if not hasattr(user, 'driver_profile'):
+            # remember to add .with_relations() after filter() to avoid N+1.
+            raise NotFound(
+                {"detail": "Your user account is not associated with a valid Driver profile."}
+            )
+
+        return TripLog.objects.filter(
+            driver=user.driver_profile).with_relations()  # type: ignore
 
     def get_permissions(self):
         if self.request.method in ['DELETE']:

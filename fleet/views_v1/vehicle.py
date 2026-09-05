@@ -9,15 +9,20 @@ from fleet.permissions import IsManager
 
 
 class VehicleListCreateView(generics.ListCreateAPIView):
-    queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = VehicleFilter
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method == 'POST':
             return [(IsAdminUser | IsManager)()]
         return [IsAuthenticated()]
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.is_manager:  # type: ignore
+            return Vehicle.objects.all()
+        return Vehicle.objects.filter(
+            id=self.request.user.driver_profile.primary_vehicle.id)  # type: ignore
 
 
 class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -27,6 +32,4 @@ class VehicleDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method == "DELETE":
             return [IsAdminUser()]
-        elif self.request.method == "GET":
-            return [IsAuthenticated()]
         return [(IsAdminUser | IsManager)()]

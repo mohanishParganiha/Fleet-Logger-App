@@ -1,7 +1,7 @@
 """Fleet API v1 serializers package."""
 from .auth import LoginRequestSerializer, LoginResponseSerializer
 from .vehicle import VehicleSerializer
-from .driver import DriverSerializer
+from .driver import DriverCreateSerializer, DriverSerializer, DriverSelfSerializer
 from .triplog import (
     TripLogSerializer,
     TripCalculationInputSerializer,
@@ -10,6 +10,6 @@ from .triplog import (
 
 __all__ = [
     'LoginRequestSerializer', 'LoginResponseSerializer',
-    'VehicleSerializer', 'DriverSerializer',
+    'VehicleSerializer', 'DriverCreateSerializer', 'DriverSerializer', 'DriverSelfSerializer',
     'TripLogSerializer', 'TripCalculationInputSerializer', 'BulkCalculationInputSerializer',
 ]
