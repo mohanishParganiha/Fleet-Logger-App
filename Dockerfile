@@ -11,10 +11,15 @@ RUN apt-get update  && apt-get install  -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/
+COPY requirements.txt requirements-dev.txt /app/
+
+ARG BUILD_ENV=production
 
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt \
+    && if [ "$BUILD_ENV" = "development" ]; then \
+        pip install --no-cache-dir -r requirements-dev.txt; \
+        fi
 
 COPY . /app
 

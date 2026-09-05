@@ -29,7 +29,7 @@ class TripLogSerializer(serializers.ModelSerializer):
         queryset=Vehicle.objects.all(),
         slug_field='registered_number',
         required=False,
-        allow_null=True
+        allow_null=True,
     )
 
     driver = serializers.SlugRelatedField(
@@ -92,6 +92,9 @@ class TripLogSerializer(serializers.ModelSerializer):
         # Determine the driver instance for this log execution
         driver = attrs.get('driver') or (
             self.instance.driver if self.instance else None)
+
+        if not driver and request and getattr(request.user, 'driver_profile', None):
+            driver = request.user.driver_profile
 
         # --- NEW FLEXIBLE LOGIC FOR VEHICLE OVERRIDE ---
         # If the frontend did NOT explicitly pass a vehicle string, default it to the driver's primary vehicle

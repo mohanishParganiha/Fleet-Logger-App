@@ -42,6 +42,7 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
+.coveragerc
 .cache
 nosetests.xml
 coverage.xml
@@ -210,8 +211,10 @@ __marimo__/
 .pem
 aws_key/
 
-#docker compose override file for local dev only
+#local dev files
 docker-compose.yml
+requirements-dev.txt
+requirements1.txt
 
 
 # ignore graphify-out
@@ -266,3 +269,4 @@ staticfiles
 
 #entrypoint
 docker-entrypoint.sh
+

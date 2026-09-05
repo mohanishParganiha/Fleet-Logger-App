@@ -30,8 +30,6 @@ user = None
 group = None
 tmp_upload_dir = None
 
-# only in dev, remove in prod
-# reload = True
 
 # ssl well add later
 # keyfile = None

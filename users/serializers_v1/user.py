@@ -36,9 +36,20 @@ class SetPasswordSerializer(serializers.Serializer):
     password_confirm = serializers.CharField(write_only=True, required=True)
 
     def validate(self, attrs):
-        if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError(
-                {"password_confirm": "Passwords do not match."})
+        password = attrs.get('password', None)
+        password_confirm = attrs.get('password_confirm', None)
+
+        if password:
+            if password_confirm:
+                if attrs['password'] != attrs['password_confirm']:
+                    raise serializers.ValidationError(
+                        {"password_confirm": "Passwords do not match."})
+            else:
+                raise serializers.ValidationError(
+                    'Confirm Password field cannot be empty')
+        else:
+            raise serializers.ValidationError('Password field cannot be empty')
+
         return attrs
 
     def update(self, instance, validated_data):
