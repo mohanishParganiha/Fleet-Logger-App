@@ -23,7 +23,7 @@ loglevel = "info"
 proc_name = "fleet_logger_api"
 
 # server mechanics
-deamon = False
+daemon = False
 pidfile = None
 mask = 0
 user = None

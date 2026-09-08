@@ -70,8 +70,8 @@ class TripLog(models.Model):
     date_time = models.DateTimeField(blank=False)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.DO_NOTHING)
-    driver = models.ForeignKey(Driver, on_delete=models.DO_NOTHING)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT)
+    driver = models.ForeignKey(Driver, on_delete=models.PROTECT)
     number_of_trips = models.IntegerField(blank=False)
     weight = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)

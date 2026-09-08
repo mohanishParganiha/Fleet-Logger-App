@@ -3,7 +3,8 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.exceptions import NotFound, PermissionDenied
 from fleet.models import Driver
-from fleet.serializers_v1 import DriverCreateSerializer, DriverSerializer, DriverSelfSerializer
+from django.db.models import ProtectedError
+from fleet.serializers_v1 import DriverCreateSerializer, DriverSerializer, DriverSelfSerializer, DriverUpdateSerializer
 from fleet.filters import DriverFilter
 from fleet.permissions import IsManager
 
@@ -26,8 +27,12 @@ class DriverListCreateView(generics.ListCreateAPIView):
 class DriverDetailView(generics.RetrieveUpdateDestroyAPIView):
     """viewset only for retrieve,update,delete driver with <pk>, by users with admin/manager permissions"""
     queryset = Driver.objects.all().select_related('user', 'primary_vehicle')
-    serializer_class = DriverSerializer
     permission_classes = [IsAdminUser | IsManager]
+
+    def get_serializer_class(self):  # type: ignore
+        if self.request.method in ['PUT', 'PATCH']:
+            return DriverUpdateSerializer
+        return DriverSerializer
 
     def destroy(self, request, *args, **kwargs):
         raise PermissionDenied(
