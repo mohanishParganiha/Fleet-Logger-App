@@ -161,7 +161,7 @@ class AuthenticationTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- cookie-based auth ---
-# problem here , 404 != 200.
+
     def test_protected_endpoint_works_with_valid_cookie(self):
         """Simulates what the browser does: sends cookie on subsequent requests."""
         token = Token.objects.create(user=self.user)
@@ -227,6 +227,14 @@ class VehicleAPITest(APITestCase):
         self.driver.save()
         # A second vehicle that must NOT appear when the driver lists.
         self.other_vehicle = make_vehicle("CG07XX9999")
+        # Driver + user fixture for soft-delete override tests.
+        self.driver_user, self.driver = make_driver_user_with_profile(
+            email="vehicle_driver@v.com", username="vehicle_driver",
+            license_number="DL3333333333333",
+            phone_number="9000000002",
+            name="Vehicle Test Driver",
+            primary_vehicle=self.vehicle,
+        )
 
     def auth(self, user):
         self.client.force_authenticate(user=user)
@@ -422,11 +430,71 @@ class VehicleAPITest(APITestCase):
 
     # --- delete ---
 
-    def test_delete_as_admin_returns_204(self):
+    def test_delete_vehicle_without_linked_triplogs_as_admin_returns_204(self):
         self.auth(self.admin)
         response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Vehicle.objects.filter(id=self.vehicle.id).exists())
+
+    def test_disable_vehicle_with_linked_triplogs_as_admin_returns_204(self):
+        self.auth(self.admin)
+        self.assertEqual(self.vehicle.status, "active")
+        make_trip(self.vehicle, self.driver)
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.vehicle.refresh_from_db()
+        self.assertEqual(self.vehicle.status, "inactive")
+        self.driver.refresh_from_db()
+        self.assertIsNone(self.driver.primary_vehicle)
+        self.assertIn("inactive", str(response.data["detail"]))
+
+    def test_delete_already_inactive_vehicle_with_trips_returns_existing_message(self):
+        self.vehicle.status = "inactive"
+        self.vehicle.save()
+        make_trip(self.vehicle, self.driver)
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIn("already marked as inactive",
+                      str(response.data["detail"]))
+        self.assertTrue(Vehicle.objects.filter(id=self.vehicle.id).exists())
+
+    def test_delete_vehicle_without_trips_hard_deletes_the_row(self):
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Vehicle.objects.filter(id=self.vehicle.id).exists())
+
+    def test_delete_inactive_vehicle_without_trips_hard_deletes_the_row(self):
+        self.vehicle.status = "inactive"
+        self.vehicle.save()
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Vehicle.objects.filter(id=self.vehicle.id).exists())
+
+    def test_delete_vehicle_with_trips_clears_only_linked_driver_primary_vehicle(self):
+        other_vehicle = make_vehicle("VEHOTHER01")
+        other_user, other_driver = make_driver_user_with_profile(
+            email="vd@v.com", username="vd",
+            license_number="DL5555555555555", phone_number="9000000003",
+            name="Other Vehicle Driver", primary_vehicle=other_vehicle,
+        )
+        make_trip(self.vehicle, self.driver)
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        self.driver.refresh_from_db()
+        other_driver.refresh_from_db()
+        self.assertIsNone(self.driver.primary_vehicle)
+        self.assertEqual(other_driver.primary_vehicle, other_vehicle)
+
+    def test_delete_vehicle_does_not_delete_linked_trip_logs(self):
+        make_trip(self.vehicle, self.driver)
+        before = TripLog.objects.filter(vehicle=self.vehicle).count()
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/vehicles/{self.vehicle.id}/")
+        after = TripLog.objects.filter(vehicle=self.vehicle).count()
+        self.assertEqual(after, before)
 
     def test_delete_as_manager_returns_403(self):
         """DELETE on a vehicle requires IsAdminUser; managers are forbidden."""
@@ -478,7 +546,7 @@ class DriverAPITest(APITestCase):
             "name": "New Driver",
             "phone_number": phone,
             "license_number": license,
-            "primary_vehicle": str(self.vehicle.id),
+            "primary_vehicle": str(self.vehicle.registered_number),
             "status": "active",
         }
 
@@ -509,7 +577,7 @@ class DriverAPITest(APITestCase):
     def test_create_as_manager_returns_201(self):
         self.auth(self.manager)
         response = self.client.post(
-            "/api/v1/drivers/", self._create_driver_payload(), format="json"
+            "/api/v1/drivers/", self._create_driver_payload(), content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -518,7 +586,7 @@ class DriverAPITest(APITestCase):
         self.auth(self.manager)
         payload = self._create_driver_payload(
             email="linked@d.com", username="linked_user",
-            license="DL8888888888888", phone="9100008888"
+            license="DL888888888888", phone="910000888"
         )
         self.client.post("/api/v1/drivers/", payload, format="json")
         self.assertTrue(User.objects.filter(email="linked@d.com").exists())
@@ -1567,6 +1635,16 @@ class UserAPITest(APITestCase):
         self.manager = make_manager("manager@u.com", "manager_u")
         self.regular = make_user("regular@u.com", "regular_u")
 
+        self.vehicle = make_vehicle("TRIPVEH001")
+        self.driver_user = make_user("driver@t.com", "driver_t")
+        self.driver = make_driver(
+            self.driver_user,
+            license_number="DL2222222222222",
+            phone_number="9200000001",
+            name="Trip Driver",
+            primary_vehicle=self.vehicle,
+        )
+
     def auth(self, user):
         self.client.force_authenticate(user=user)
 
@@ -1636,12 +1714,104 @@ class UserAPITest(APITestCase):
 
     # --- /api/v1/users/<uuid>/  delete ---
 
-    def test_admin_can_delete_user(self):
+    def test_admin_can_delete_user_without_triplog_linked(self):
         target = make_user("delete_me@u.com", "delete_me_u")
         self.auth(self.admin)
         response = self.client.delete(f"/api/v1/users/{target.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(id=target.id).exists())
+
+    def test_admin_can_disable_user_with_triplogs(self):
+        target_user, target_driver = make_driver_user_with_profile(
+            email="disable_target@u.com", username="disable_target",
+            license_number="DL4444444444444", phone_number="9500000001",
+            name="Disable Target", primary_vehicle=self.vehicle,
+        )
+        target_trip = make_trip(self.vehicle, target_driver)
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/users/{target_user.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        target_user.refresh_from_db()
+        self.assertFalse(target_user.is_active)
+        target_driver.refresh_from_db()
+        self.assertEqual(target_driver.status, "inactive")
+        self.assertIsNone(target_driver.primary_vehicle)
+        self.assertTrue(TripLog.objects.filter(id=target_trip.id).exists())
+        self.assertIn("disabled", str(response.data["detail"]))
+
+    def test_admin_can_delete_user_without_driver_profile(self):
+        plain = make_user("plain@u.com", "plain_u")
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/users/{plain.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=plain.id).exists())
+
+    def test_admin_delete_user_with_trips_does_not_delete_trip_logs(self):
+        target_user, target_driver = make_driver_user_with_profile(
+            email="tlog@u.com", username="tlog_u",
+            license_number="DL6666666666666", phone_number="9500000002",
+            name="Log Target", primary_vehicle=self.vehicle,
+        )
+        target_trip = make_trip(self.vehicle, target_driver)
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/users/{target_user.id}/")
+        self.assertTrue(TripLog.objects.filter(id=target_trip.id).exists())
+
+    def test_admin_delete_user_does_not_affect_other_users(self):
+        target = make_user("del@u.com", "del_u")
+        sibling = make_user("sib@u.com", "sib_u")
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/users/{target.id}/")
+        self.assertTrue(User.objects.filter(id=sibling.id).exists())
+        sibling.refresh_from_db()
+        self.assertTrue(sibling.is_active)
+
+    def test_admin_delete_already_inactive_user_with_trips_returns_existing_message(self):
+        target_user, target_driver = make_driver_user_with_profile(
+            email="inact@u.com", username="inact_u",
+            license_number="DL7777777777777", phone_number="9500000003",
+            name="Inact Target", primary_vehicle=self.vehicle,
+        )
+        make_trip(self.vehicle, target_driver)
+        target_user.is_active = False
+        target_user.save()
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/users/{target_user.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIn("already marked as inactive",
+                      str(response.data["detail"]))
+
+    def test_admin_delete_user_with_trips_does_not_delete_driver_profile(self):
+        target_user, target_driver = make_driver_user_with_profile(
+            email="nodp@u.com", username="nodp_u",
+            license_number="DL8888888888888", phone_number="9500000004",
+            name="No Delete Target", primary_vehicle=self.vehicle,
+        )
+        make_trip(self.vehicle, target_driver)
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/users/{target_user.id}/")
+        self.assertTrue(Driver.objects.filter(user=target_user).exists())
+
+    def test_admin_delete_inactive_user_without_driver_profile_hard_deletes(self):
+        plain = make_user("plain_inact@u.com", "plain_inact")
+        plain.is_active = False
+        plain.save()
+        self.auth(self.admin)
+        response = self.client.delete(f"/api/v1/users/{plain.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=plain.id).exists())
+
+    def test_admin_delete_user_with_trips_does_not_affect_other_drivers_primary_vehicle(self):
+        target_user, target_driver = make_driver_user_with_profile(
+            email="dnoaff@u.com", username="dnoaff_u",
+            license_number="DL9999999999999", phone_number="9500000005",
+            name="DNoAff Target", primary_vehicle=self.vehicle,
+        )
+        make_trip(self.vehicle, target_driver)
+        self.auth(self.admin)
+        self.client.delete(f"/api/v1/users/{target_user.id}/")
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.primary_vehicle, self.vehicle)
 
     def test_manager_cannot_delete_user(self):
         """DELETE requires IsAdminUser; managers are blocked at the permission layer."""

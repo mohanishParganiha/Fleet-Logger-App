@@ -10,6 +10,11 @@ class DriverCreateSerializer(serializers.ModelSerializer):
     # required=True ensures user account details must be provided during creation
     user = RegisterSerializer(required=True)
 
+    primary_vehicle = serializers.SlugRelatedField(
+        queryset=Vehicle.objects.all(),
+        slug_field='registered_number'
+    )
+
     class Meta:
         model = Driver
         fields = [
@@ -23,7 +28,7 @@ class DriverCreateSerializer(serializers.ModelSerializer):
             'date_created',
             'date_updated'
         ]
-        read_only_fields = ['id', 'date_created', 'date_updated']
+        read_only_fields = ['id', 'status', 'date_created', 'date_updated']
 
     def create(self, validated_data):
         # 1. Extract the clean, pre-validated user dictionary data
@@ -41,7 +46,7 @@ class DriverCreateSerializer(serializers.ModelSerializer):
 
 
 class DriverSerializer(serializers.ModelSerializer):
-    """ Serializer for retrieve and update driver fields by admin/manager"""
+    """ Serializer for retrieve and delete driver fields by admin/manager"""
     user = serializers.SlugRelatedField(
         queryset=User.objects.all(),
         slug_field='id'
@@ -67,6 +72,31 @@ class DriverSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = ['id', 'user', 'date_created', 'date_updated']
+
+
+class DriverUpdateSerializer(serializers.ModelSerializer):
+    """ Serializer for update driver fields by admin/manager"""
+
+    primary_vehicle = serializers.SlugRelatedField(
+        queryset=Vehicle.objects.all(),
+        slug_field='registered_number'
+    )
+
+    class Meta:
+        model = Driver
+
+        fields = [
+            'id',
+            'name',
+            'phone_number',
+            'license_number',
+            'primary_vehicle',
+            'status',
+            'date_created',
+            'date_updated'
+        ]
+
+        read_only_fields = ['id', 'date_created', 'date_updated']
 
 
 class DriverSelfSerializer(serializers.ModelSerializer):
