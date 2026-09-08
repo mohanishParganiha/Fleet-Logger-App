@@ -7,7 +7,7 @@ from django.db.models import ProtectedError
 from fleet.models import Vehicle, Driver
 from fleet.serializers_v1 import VehicleSerializer
 from fleet.filters import VehicleFilter
-from fleet.permissions import IsManager, IsActiveDriver
+from fleet.permissions import IsManager
 
 
 class VehicleListCreateView(generics.ListCreateAPIView):
