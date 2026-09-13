@@ -1,58 +1,60 @@
+from rest_framework.request import Request
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from config import settings
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 
 from fleet.serializers_v1 import LoginRequestSerializer, LoginResponseSerializer
 from services_v1.auth_service.auth_service import AuthService
 
 
-@extend_schema(
-    request=LoginRequestSerializer,
-    responses={
-        200: OpenApiResponse(
-            response=LoginResponseSerializer,
-            description="Successfully authenticated. Returns profile metadata."
-        )
-    },
-    parameters=[
-        OpenApiParameter(
-            name='Set-Cookie',
-            type=str,
-            location=OpenApiParameter.HEADER,
-            description="Contains auth_token=...; HttpOnly; Secure; SameSite; domain;",
-            response=True
-        )
-    ],
-    description="Authenticates credentials, returns profile metadata, and drops a secure HttpOnly cookie."
-)
-class LoginView(APIView):
-    """login endpoint - returns auth token"""
-    permission_classes = []
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            access_token = response.data.get('access')  # type: ignore
+            refresh_token = response.data.get('refresh')  # type: ignore
 
-    def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
+            # Clean response body data for security
+            response.data = {"message": "Login successful"}
 
-        try:
-            user, token = AuthService.login_user(email, password)
-        except ValueError as e:
-            error_msg = str(e)
-            if "empty" in error_msg:
-                return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({"error": error_msg}, status=status.HTTP_401_UNAUTHORIZED)
+            # Attach HttpOnly cookies
+            response = AuthService.set_jwt_cookies(
+                response, access_token, refresh_token)
+        return response
 
-        return AuthService.create_login_response_with_cookie(user, token)
+
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        # Extract refresh token from cookie if not in request body
+        refresh_token = request.COOKIES.get(
+            settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])
+        if refresh_token and 'refresh' not in request.data:  # type: ignore
+            request.data['refresh'] = refresh_token  # type: ignore
+
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            access_token = response.data.get('access')  # type: ignore
+            # Only if ROTATE_REFRESH_TOKENS=True
+            refresh_token = response.data.get('refresh')  # type: ignore
+
+            response.data = {"message": "Token refresh successful"}
+            response = AuthService.set_jwt_cookies(
+                response, access_token, refresh_token)
+        return response
 
 
 @extend_schema(
+    methods=['POST'],
     request=None,
     responses={
         200: OpenApiResponse(
             response=None,
-            description="Successfully logged out."
+            description="Successfully logged out.",
+            examples=[{"message": "Logout successful"}]
         )
     },
     parameters=[
@@ -64,12 +66,15 @@ class LoginView(APIView):
             response=True
         )
     ],
-    description="Permanently deletes the database token and instructs the browser to erase the HttpOnly cookie."
+    description="Logout view for httponly cookie wipe from client browser."
 )
-class LogoutView(APIView):
-    """View to clear cookies on logout."""
-    permission_classes = [IsAuthenticated]
+class CustomLogoutView(APIView):
+    """Logout view for httponly cookie wipe from client browser"""
 
     def post(self, request):
-        AuthService.logout_user(request.auth)
-        return AuthService.create_logout_response()
+        response = Response({"message": "Logout successful"})
+        response.delete_cookie(
+            settings.SIMPLE_JWT['AUTH_COOKIE'], path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'])
+        response.delete_cookie(
+            settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'], path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'])
+        return response

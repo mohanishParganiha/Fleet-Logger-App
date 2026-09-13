@@ -1,18 +1,25 @@
 from django.urls import path
 from fleet.views_v1 import (
-    LoginView, LogoutView,
+    CustomTokenObtainPairView, CustomLogoutView, CustomTokenRefreshView,
     VehicleListCreateView, VehicleDetailView,
     DriverListCreateView, DriverDetailView, DriverMeView,
     TripLogListCreateView, TripLogDetailView,
     TripLogApproveView, TripLogCalculationView, TripLogBulkCalculateView,
 )
+from rest_framework_simplejwt.views import TokenVerifyView
 
 urlpatterns = [
     # login endpoint
-    path('login/', LoginView.as_view(), name='login'),
+    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
+
+    # token refresh view
+    path('token/refresh/', CustomTokenRefreshView.as_view(), name='token-refresh'),
 
     # logout endpoint
-    path('logout/', LogoutView.as_view(), name='logout'),
+    path('logout/', CustomLogoutView.as_view(), name='logout'),
+
+    # token verify
+    path('token/verify/', TokenVerifyView.as_view(), name='token-verify'),
 
     # truck endpoints
     path(

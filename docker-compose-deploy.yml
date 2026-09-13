@@ -27,6 +27,25 @@ services:
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
       - CSRF_COOKIE_DOMAIN=${CSRF_COOKIE_DOMAIN}
       - SESSION_COOKIE_DOMAIN=${SESSION_COOKIE_DOMAIN}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ACCESS_TOKEN_LIFETIME=${ACCESS_TOKEN_LIFETIME}
+      - REFRESH_TOKEN_LIFETIME=${REFRESH_TOKEN_LIFETIME}
+      - ROTATE_REFRESH_TOKENS=${ROTATE_REFRESH_TOKENS}
+      - BLACKLIST_AFTER_ROTATION=${BLACKLIST_AFTER_ROTATION}
+      - AUTH_COOKIE=${AUTH_COOKIE}
+      - AUTH_COOKIE_REFRESH=${AUTH_COOKIE_REFRESH}
+      - AUTH_COOKIE_SECURE=${AUTH_COOKIE_SECURE}
+      - AUTH_COOKIE_HTTP_ONLY=${AUTH_COOKIE_HTTP_ONLY}
+      - AUTH_COOKIE_PATH=${AUTH_COOKIE_PATH}
+      - AUTH_COOKIE_SAMESITE=${AUTH_COOKIE_SAMESITE}
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
     networks:
       - fleet_network
     deploy:
@@ -46,7 +65,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     networks:
       - fleet_network
     deploy:

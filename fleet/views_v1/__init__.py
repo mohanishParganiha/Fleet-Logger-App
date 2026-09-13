@@ -1,5 +1,5 @@
 """Fleet API v1 views package."""
-from .auth import LoginView, LogoutView
+from .auth import CustomTokenObtainPairView, CustomTokenRefreshView, CustomLogoutView
 from .vehicle import VehicleListCreateView, VehicleDetailView
 from .driver import DriverListCreateView, DriverDetailView, DriverMeView
 from .triplog import (
@@ -8,7 +8,7 @@ from .triplog import (
 )
 
 __all__ = [
-    'LoginView', 'LogoutView',
+    'CustomTokenObtainPairView', 'CustomTokenRefreshView', 'CustomLogoutView',
     'VehicleListCreateView', 'VehicleDetailView',
     'DriverListCreateView', 'DriverDetailView', 'DriverMeView',
     'TripLogListCreateView', 'TripLogDetailView',

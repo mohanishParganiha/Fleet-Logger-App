@@ -1,5 +1,6 @@
 Django>=5.2,<5.3
 djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
 django-filter==25.2
 psycopg2-binary==2.9.10
 gunicorn==23.0.0
@@ -7,3 +8,6 @@ django-cors-headers==4.7.0
 drf_spectacular==0.29.0
 django-simple-history==3.11.0
 uuid6==2025.0.1
+coverage==7.16.0
+Faker==40.37.0
+python-decouple==3.8

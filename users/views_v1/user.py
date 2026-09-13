@@ -19,6 +19,9 @@ class UserDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = UserSerializer
 
     def get_queryset(self):  # type:ignore
+        if getattr(self, 'swagger_fake_view', False):
+            return User.objects.none()
+
         if self.request.user.is_staff or self.request.user.is_manager:  # type: ignore
             return User.objects.all()
         return User.objects.filter(id=self.request.user.id)  # type: ignore

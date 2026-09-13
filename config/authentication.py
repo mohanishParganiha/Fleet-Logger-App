@@ -1,29 +1,40 @@
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions
+from config import settings
+from rest_framework.request import Request
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import CSRFCheck
+from rest_framework import exceptions
+from rest_framework_simplejwt.tokens import Token
 
 
-class CookieTokenAuthentication(TokenAuthentication):
-    def authenticate(self, request):
-        # 1. Look for the token inside the HttpOnly cookie payload
-        token_string = request.COOKIES.get('auth_token')
+class CustomJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request: Request):
+        header = self.get_header(request)
 
-        # 2. If cookie is missing, return None to let other auth methods try
-        if not token_string:
+        if header is None:
+            raw_token = request.COOKIES.get(
+                settings.SIMPLE_JWT['AUTH_COOKIE']) or None
+        else:
+            raw_token = self.get_raw_token(header)
+
+        if raw_token is None:
             return None
 
-        # 3. Use DRF's built-in validation logic to check the database token string
-        return self.authenticate_credentials(token_string)
+        validated_token = self.get_validated_token(raw_token)
+        return self.get_user(validated_token), validated_token
 
 
-class CookieTokenAuthExtension(OpenApiAuthenticationExtension):
+class CustomJWTAuthenticationExtension(OpenApiAuthenticationExtension):
     # Path to your class
-    target_class = 'your_app_name.authentication.CookieTokenAuthentication'
-    name = 'CookieAuth'
+    target_class = 'config.authentication.CustomJWTAuthentication'
+    name = 'JWT_Auth'
 
     def get_security_definition(self, auto_schema):
         return {
             'type': 'apiKey',
             'in': 'cookie',
-            'name': 'auth_token',  # The actual cookie key name
+            # The actual cookie key name
+            'name': 'access_token',
         }

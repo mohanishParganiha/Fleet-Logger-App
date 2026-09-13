@@ -21,6 +21,9 @@ class VehicleListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Vehicle.objects.none()
+
         if self.request.user.is_staff or self.request.user.is_manager:  # type: ignore
             return Vehicle.objects.all()
         return Vehicle.objects.filter(

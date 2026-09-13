@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from pathlib import Path
-import os
 import sys
+from datetime import timedelta
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,18 +24,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+DEBUG = config('DEBUG', cast=bool)
 
 # TESTING = 'test' in sys.argv or 'pytest' in sys.argv
 
-SECRET_KEY = os.environ.get('SECRET_KEY', None)
+SECRET_KEY = config(
+    'SECRET_KEY', default='p)lc1=1&8cq%9vz-sa47*^57iq2s(m%)xwmsyq1v077c#+b=2^', cast=str)
 
-if not SECRET_KEY:
-    if not DEBUG:
-        SECRET_KEY = 'p)lc1=1&8cq%9vz-sa4#*^57iq2s(m%)xwmsyq1v077c#+b=2^'
-
-ALLOWED_HOSTS = os.environ.get(
-    'ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 
 # Application definition
@@ -49,7 +48,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'django_filters',
-    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'users',
     'fleet',
@@ -94,11 +94,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'fleet_db'),
-        'USER': os.environ.get('DB_USER', 'fleet_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'fleetpass123'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'NAME': config('DB_NAME', default='fleet_db', cast=str),
+        'USER': config('DB_USER', default='fleet_user', cast=str),
+        'PASSWORD': config('DB_PASSWORD', default='fleetpass123', cast=str),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT', default='5432', cast=str),
     }
 }
 
@@ -149,34 +149,13 @@ if not DEBUG:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── CORS ──────────────────────────────────────
-# Production: Use specific allowed origins
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:8080,http://127.0.0.1:8080'
-).split(',')
-
-CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    'CSRF_TRUSTED_ORIGINS',
-    'None'
-).split(',')
-
-# Development fallback (comment this out for production)
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-
-
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # 1. First priority: Look for the HttpOnly cookie (React Production/Dev)
-        'config.authentication.CookieTokenAuthentication',
-        # 2. Second priority: Fallback to the standard Authorization header (Swagger UI)
-        'rest_framework.authentication.TokenAuthentication',
-        # 3. Third priority: Fallback to session cookies (Django Admin panel & browsable API)
+        'config.authentication.CustomJWTAuthentication',
+        # 2. Third priority: Fallback to session cookies (Django Admin panel & browsable API)
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -212,12 +191,27 @@ SPECTACULAR_SETTINGS = {
     'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
 }
 
+# ── CORS ──────────────────────────────────────
+# Production: Use specific allowed origins
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS', default='http://localhost:8080,http://127.0.0.1:8080', cast=Csv())
 
-SESSION_COOKIE_DOMAIN = os.environ.get(
-    'SESSION_COOKIE_DOMAIN', 'localhost')
-CSRF_COOKIE_DOMAIN = os.environ.get(
-    'CSRF_COOKIE_DOMAIN', 'localhost')
+CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS', default='None', cast=Csv())
+
+# Development fallback (comment this out for production)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+SESSION_COOKIE_DOMAIN = config(
+    'SESSION_COOKIE_DOMAIN', default='localhost', cast=str)
+
+CSRF_COOKIE_DOMAIN = config(
+    'CSRF_COOKIE_DOMAIN', default='localhost', cast=str)
+
+# httponly so js script cant read them onyl http can.
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False  # MUST be False so your frontend can read it
 
@@ -227,6 +221,7 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     X_FRAME_OPTIONS = "DENY"
 
+    # set secure for https only
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
@@ -272,4 +267,27 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+SIMPLE_JWT = {
+    "SIGNING_KEY": config("JWT_SECRET_KEY", cast=str),
+    # Optional: You can explicitly declare the algorithm (HS256 is default)
+    "ALGORITHM": config("HS256", default='HS256', cast=str),
+
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(config('ACCESS_TOKEN_LIFETIME', default=10, cast=int))),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(config('REFRESH_TOKEN_LIFETIME', default=1, cast=int))),
+    'ROTATE_REFRESH_TOKENS': config('ROTATE_REFRESH_TOKENS', default=True, cast=bool),
+    'BLACKLIST_AFTER_ROTATION': config('BLACKLIST_AFTER_ROTATION', default=True, cast=bool),
+
+    # Custom Cookie Configuration Variables
+    'AUTH_COOKIE': config('AUTH_COOKIE', default='access_token', cast=str),
+    'AUTH_COOKIE_REFRESH': config('AUTH_COOKIE_REFRESH', default='refresh_token', cast=str),
+    # False for local HTTP development, True for Production HTTPS
+    'AUTH_COOKIE_SECURE': config('AUTH_COOKIE_SECURE', default=False, cast=bool),
+    # Prevents JavaScript reading the cookie (Mitigates XSS)
+    'AUTH_COOKIE_HTTP_ONLY': config('AUTH_COOKIE_HTTP_ONLY', default=True, cast=bool),
+    'AUTH_COOKIE_PATH': config('AUTH_COOKIE_PATH', default='/', cast=str),
+    # Protects against CSRF attacks
+    'AUTH_COOKIE_SAMESITE': config('AUTH_COOKIE_SAMESITE', default='Lax', cast=str),
+    # 'AUTH_COOKIE_DOMAIN': config('AUTH_COOKIE_DOMAIN'),
 }
