@@ -35,7 +35,6 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APITestCase
 
 from fleet.models import Driver, TripLog, Vehicle
@@ -132,8 +131,10 @@ class AuthenticationTest(APITestCase):
             {"email": "auth@test.com", "password": "TestPass123"},
             format="json",
         )
-        self.assertIn("auth_token", response.cookies)
-        self.assertTrue(response.cookies["auth_token"]["httponly"])
+        self.assertIn("access_token", response.cookies)
+        self.assertTrue(response.cookies["access_token"]["httponly"])
+        self.assertIn("refresh_token", response.cookies)
+        self.assertTrue(response.cookies["refresh_token"]["httponly"])
 
     def test_login_returns_user_metadata(self):
         response = self.client.post(
@@ -141,9 +142,14 @@ class AuthenticationTest(APITestCase):
             {"email": "auth@test.com", "password": "TestPass123"},
             format="json",
         )
-        self.assertIn("email", response.data)
-        self.assertIn("is_staff", response.data)
-        self.assertIn("is_manager", response.data)
+        self.assertIn('user', response.data)
+
+        user_metadata = response.data.get('user')
+
+        self.assertIn("id", user_metadata)
+        self.assertIn("email", user_metadata)
+        self.assertIn("is_staff", user_metadata)
+        self.assertIn("is_manager", user_metadata)
         # token must NOT be in the JSON body — it lives in the cookie
         self.assertNotIn("token", response.data)
 
@@ -164,8 +170,16 @@ class AuthenticationTest(APITestCase):
 
     def test_protected_endpoint_works_with_valid_cookie(self):
         """Simulates what the browser does: sends cookie on subsequent requests."""
-        token = Token.objects.create(user=self.user)
-        self.client.cookies["auth_token"] = token.key
+        response = self.client.post(
+            '/api/v1/login/', {"email": "auth@test.com", "password": "TestPass123"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Assert that the cookies were actually set by the backend
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
+
+        # Explicitly load the cookies into the test client
+        self.client.cookies.load(response.cookies)
+
         response = self.client.get(f"/api/v1/users/{self.user.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -176,23 +190,35 @@ class AuthenticationTest(APITestCase):
     # --- logout ---
 
     def test_logout_returns_200(self):
-        token = Token.objects.create(user=self.user)
-        self.client.cookies["auth_token"] = token.key
+        response = self.client.post(
+            '/api/v1/login/', {"email": "auth@test.com", "password": "TestPass123"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Assert that the cookies were actually set by the backend
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
+
+        # Explicitly load the cookies into the test client
+        self.client.cookies.load(response.cookies)
+
         response = self.client.post("/api/v1/logout/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_logout_deletes_token_from_database(self):
-        token = Token.objects.create(user=self.user)
-        self.client.cookies["auth_token"] = token.key
-        self.client.post("/api/v1/logout/")
-        self.assertFalse(Token.objects.filter(key=token.key).exists())
-
     def test_logout_clears_cookie(self):
-        token = Token.objects.create(user=self.user)
-        self.client.cookies["auth_token"] = token.key
+        response = self.client.post(
+            '/api/v1/login/', {"email": "auth@test.com", "password": "TestPass123"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Assert that the cookies were actually set by the backend
+        self.assertIn('access_token', response.cookies)
+        self.assertIn('refresh_token', response.cookies)
+
+        # Explicitly load the cookies into the test client
+        self.client.cookies.load(response.cookies)
+
         response = self.client.post("/api/v1/logout/")
-        self.assertEqual(response.cookies["auth_token"].value, "")
-        self.assertEqual(response.cookies["auth_token"]["max-age"], 0)
+        self.assertEqual(response.cookies["access_token"].value, "")
+        self.assertEqual(response.cookies["access_token"]["max-age"], 0)
+        self.assertEqual(response.cookies["refresh_token"].value, "")
+        self.assertEqual(response.cookies["refresh_token"]["max-age"], 0)
 
     def test_logout_requires_authentication(self):
         """Unauthenticated users cannot hit the logout endpoint."""
@@ -2015,15 +2041,17 @@ class TestHealth(APITestCase):
     def test_health_reports_database_connected_when_db_reachable(self):
         """Default test DB is reachable — database must be 'connected'."""
         response = self.client.get(self.URL)
-        self.assertEqual(response.data["database"], "connected")
+        self.assertEqual(response.data["services"]["database"], "connected")
 
     def test_health_reports_database_disconnected_when_ensure_connection_raises(self):
-        """When ensure_connection() raises, the view must report 'disconnected'."""
+        """When ensure_connection() raises, the view must report 'unreachable'."""
+        from django.db import OperationalError
         with patch("config.views.connection.ensure_connection",
-                   side_effect=Exception("db down")):
+                   side_effect=OperationalError("db down")):
             response = self.client.get(self.URL)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["database"], "disconnected")
+        self.assertEqual(response.status_code,
+                         status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data["services"]["database"], "unreachable")
 
     def test_health_does_not_require_authentication(self):
         """No force_authenticate, no cookie — must still be 200."""
@@ -2034,7 +2062,8 @@ class TestHealth(APITestCase):
         """Payload must include 'status' and 'database' keys."""
         response = self.client.get(self.URL)
         self.assertIn("status", response.data)
-        self.assertIn("database", response.data)
+        self.assertIn("services", response.data)
+        self.assertIn("database", response.data["services"])
         self.assertEqual(response.data["status"], "healthy")
 
 

@@ -3,27 +3,31 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from fleet.serializers_v1.auth import CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from config import settings
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
-
-from fleet.serializers_v1 import LoginRequestSerializer, LoginResponseSerializer
 from services_v1.auth_service.auth_service import AuthService
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
     def post(self, request: Request, *args, **kwargs) -> Response:
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access')  # type: ignore
             refresh_token = response.data.get('refresh')  # type: ignore
 
-            # Clean response body data for security
-            response.data = {"message": "Login successful"}
-
             # Attach HttpOnly cookies
             response = AuthService.set_jwt_cookies(
                 response, access_token, refresh_token)
+
+            # 4. Clean up response.data so tokens aren't visible to frontend JS
+            # Your frontend will now only see the 'user' metadata dict
+            del response.data['access']
+            del response.data['refresh']
+
         return response
 
 
