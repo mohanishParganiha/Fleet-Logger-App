@@ -268,5 +268,5 @@ management
 staticfiles
 
 #entrypoint
-docker-entrypoint.sh
+# docker-entrypoint.sh
 
